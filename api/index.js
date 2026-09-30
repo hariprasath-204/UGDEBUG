@@ -14,306 +14,150 @@ app.use(express.json({ limit: '5mb' }));
 
 const DEFAULT_API_KEY = process.env.ONLINE_COMPILER_API_KEY || 'ccb79ad09699924cb025d0ba0b6690ed';
 
-// ── Array of JDoodle API Credentials (Supports 20+ keys for automatic failover) ──
-// If a key exhausts its daily credit limit (statusCode 429 / Daily limit exceeded / Unauthorized),
-// the compiler loop automatically retries the Java program using the next key in this array.
-let JDOODLE_KEYS = [
-  // Existing 7 Keys
-  {
-    clientId: "4a9a6038b2a7e33b9a6b3739d857f178",
-    clientSecret: "af69762f1a3185158b2feb6d50efc3255662084d3d3767c9614bc877bc4e9be"
-  },
-  {
-    clientId: "3e8706c0cafdf8ff216561a0d3304d59",
-    clientSecret: "7b15e29aefe3c416a105d85f544fab38d7707e5f479d586189cedfecd5dddbc1"
-  },
-  {
-    clientId: "18e0a38b4e6695a1bba4f3a3381e174f",
-    clientSecret: "228d6d9f6a1ad274de5db67988ec6fdb4cd52db34b3d93184d8e53bdb594b7a9"
-  },
-  {
-    clientId: "5f45c84173c7098c031404a9674d6c70",
-    clientSecret: "a91dfa30ca471cff624337eb0dcf80cfa22300f80ac9a7483d9c08bb1bcd66fb"
-  },
-  {
-    clientId: "982a4209bc5bff19d1477e5a828cfaa7",
-    clientSecret: "233b90363b565cec8868e8175e713efdcae02ee361c28f1c01299609b71871c2"
-  },
-  {
-    clientId: "4da2716404770c9e712cfea86cb360e",
-    clientSecret: "a4bf05d8b551544e80746fc149301d0570ee586cedd67ac1fcca78db0ec66d21"
-  },
-  {
-    clientId: "1a12909b9e823337a62eeb3ecd23ee7f",
-    clientSecret: "d23dfc7e285be4244bcac4069507284b512ce530bce1a9913d662055ba52e52d"
-  },
-  // Added 22 Keys
-  {
-    clientId: "e9d4c44d39706bc115fd78d1fa94ae0b",
-    clientSecret: "2301490931d4fb5120c3a90054f4fdaf62adbab50e1c5340fb66a95834784950"
-  },
-  {
-    clientId: "b30629e21f310dbf19aba52408e2a2a8",
-    clientSecret: "d6d0b3c5e9375561a3cb95bae07c99f682d80010bd2a8d11f431f49ff06c78e2"
-  },
-  {
-    clientId: "fd83f9d57ac69f9adeff2a6fdc73ffdb",
-    clientSecret: "6defdfd8ddeaae552104964104bf893d24f18eab5dd80d680cee93bf8cf519fa"
-  },
-  {
-    clientId: "314ca30886bd9620faafe84a5a0c4ebb",
-    clientSecret: "c5c89a82ce82dc00d0983371b8b6313d4435b8aaac6b20dc03892ef6e63c4487"
-  },
-  {
-    clientId: "9b7149e8f712ebe613986a00957e3edb",
-    clientSecret: "5ace899a89ab28e7060c5e7cac49205df46387367e9d58d96bc379e7ce08fdce"
-  },
-  {
-    clientId: "4b8d713065b8a0e847e698912c745460",
-    clientSecret: "5ffb6c31effdf8914baabda5ec20bb461e1b7b75ecbcf2e825a0b3f5c7ff26b9"
-  },
-  {
-    clientId: "decd504ec47ed1355d951fe5779d0fe4",
-    clientSecret: "db582301b8d5e24094bd8e2f51293ece3198a377d3b8cb933d799416acb2a401"
-  },
-  {
-    clientId: "196cb515a1006555e7ace58f43fc4c17",
-    clientSecret: "5befa1e4d25d261b6deff0b916fcc82d4a15fd3c7bd1fc0046e4990feb86b85b"
-  },
-  {
-    clientId: "b5d77dc299692b52116de24ffbbf19ac",
-    clientSecret: "3f1840cca41b59d9b0e694cd26c969f9c38b3de9d49e895299ce08af6234270d"
-  },
-  {
-    clientId: "ef832f26f387fdabc20f1ab5600fd398",
-    clientSecret: "6cd152d68ddd2d04c3ef229f60fb6afb6291ad137ea0246ee7734b7bbf948ab2"
-  },
-  {
-    clientId: "f979e6144c4a43700876fcad294de5c0",
-    clientSecret: "1e9a334be85af822673e25547a5b94e362b00fbccd355cb57a740517042e3138"
-  },
-  {
-    clientId: "ac5e6f41a7cad46d5b37a318ebd0ed78",
-    clientSecret: "2e2384b0c3237b2fe0f3c177bc0b9d17bfed2b3356e385851cf25cc4efec6e6e"
-  },
-  {
-    clientId: "508f04c91c99911af75cdc21fb72c675",
-    clientSecret: "7c090ad0c46b72b47138ecff18c9a3f168faa77e129f75aadc915d61d668ecb2"
-  },
-  {
-    clientId: "fa0cf8185c0b2b43c26e87ab5649c691",
-    clientSecret: "779e4df53c34ad549665ed6fc17a4509ac357377c9462ffd3d370bea94aed840"
-  },
-  {
-    clientId: "3717e4a63f833cce76eb5a610b0a58ff",
-    clientSecret: "532ff37974a65ad86e39bb42f71d2df4ef2ab68301f2f78e54c7a5217cb76f75"
-  },
-  {
-    clientId: "dbf60ee909b6ef93e7f3845376c7a9ea",
-    clientSecret: "49862081bbe1c2e1494173b5ee79a09def675f4e481fb0755541a623c798d3f5"
-  },
-  {
-    clientId: "721971bed2443f06b09cf9d965e40e2c",
-    clientSecret: "c15b9aec9b3540942a72f012d05160099348b8fecbfe987a59f1b22a9e3d2ad4"
-  },
-  {
-    clientId: "cfbbe31583110e83c74f5ae7ea77b6bf",
-    clientSecret: "5c0e0bbc30ac9e5ad8f675c9b6c31abe562f2c8e11bddce2fec8b512c59393c4"
-  },
-  {
-    clientId: "9baba800dcad9f64d0ef7e180226bcd0",
-    clientSecret: "e4916385a6e5c003d267d919fa41de009c579684f69bf141e742d15069d2a5bb"
-  },
-  {
-    clientId: "a9b709e280afbc916252ce9a691641f9",
-    clientSecret: "806d741cd61967262c1641da1d2fe7f8e77489f56dbcb6506a1d57b0561407d3"
-  },
-  {
-    clientId: "3513793f9cb42dce8d7bc7b79ce9ac72",
-    clientSecret: "2da50081c7ffbf9841b3547fa7dd2cf6ac3405d6b3474ec360938260a549f70c"
-  },
-  {
-    clientId: "9f2dd28002c61669a6ad40bed46b19b3",
-    clientSecret: "fd365b49e35fa273a1c678af84d58e19bd3f8aab98f700d2136d5c42005e4b9f"
-  },
-  {
-    clientId: "9382bb4b33c6d7d54591ab1156a0416c",
-    clientSecret: "3c5d039783e89e6942141b11fe921c09d217e3e89c0219bf0d7f5973d49f46e8"
-  }, {
-    clientId: "4683a8489fbd7ca86613c84f1206c8a0",
-    clientSecret: "d35724cff65bc3b1b046045739cb065b2d2c330b7b76bfd47decf1a2e26c9f8"
-  },
-  {
-    clientId: "bfed6776eb31dbda2bedd391e7d0f3f1",
-    clientSecret: "28c18fe94d2f3e8ad7d8855a63cc590373e94217b78e15287d930fb53aac6d3c"
-  },
-  {
-    clientId: "95128b10793f2e978785b5c7a48b2532",
-    clientSecret: "bd6ac8bc7d5e6d89f1172ff2ce489aa38e7050cb722085bcde0ad37afee933d4"
-  },
-  {
-    clientId: "a78dff5add084e9f4acecc3eccf0b35c",
-    clientSecret: "fe489d0a03ea51ad459d535345cf5fd14f41cc3ce095bfeb3fb56d1f10709b28"
-  },
-  {
-    clientId: "e3c76c74d57b8dd2f9b40f577078d679",
-    clientSecret: "a001032cc04a284282659e9385c71ca6df9ded290aef9550faa84aabdf78d2d"
-  },
-  {
-    clientId: "29b2cb0b825c059c417661b557145e6c",
-    clientSecret: "39f05789a92f7e6f13307106d90eba402c8dee4033d8372f383e24e85cf72e2a"
-  },
-  {
-    clientId: "70599b1ca20da775cf63e6d6548551a4",
-    clientSecret: "48e732af6d87709c970fc73012b6e4d55b9d4947b6e07172c2e2f3c4f8d2393c"
-  },
-  {
-    clientId: "7145d4b497a13c10957c917b6d3fccc9",
-    clientSecret: "58865878c01c13936e81750b97838379039c8c0b5af7dc06c5aea6de4337d046"
-  },
-  {
-    clientId: "ae6954b908c906f88cdf29c15a88bbbb",
-    clientSecret: "63be1070edd3f10acc0411abcff7319f94d12d4571ee3353635b46491cc215e9"
-  },
-  {
-    clientId: "5d34444cf02750332fb8326009fce9da",
-    clientSecret: "3f173d36e4a3e641a60d9d0bc5279b030b505ecc60270c9a0a0bdfe8e2e2faad"
-  }
+// ── Pool of OnlineCompiler.io API Keys (Supports multiple keys with automatic failover) ──
+// If a key reaches its daily quota or returns 429/Limit Exceeded, the compiler seamlessly fails over to the next key.
+let ONLINE_COMPILER_KEYS = [
+  "ccb79ad09699924cb025d0ba0b6690ed",
+  "28152502bdcf827c763a92f0bf7ed806",
+  "42084204b0195f78ed851ac35c43a059"
 ];
 
-let JDOODLE_KEY_STATUS = {};
+let ONLINE_COMPILER_KEY_STATUS = {};
 
-app.all('/api/jdoodle/count', (req, res) => {
+// Helper: Get all unique keys (Built-in + Admin custom keys)
+const getAllOnlineCompilerKeys = (customKeys = []) => {
+  const customArr = Array.isArray(customKeys) 
+    ? customKeys.map(k => (typeof k === 'string' ? k.trim() : (k?.apiKey || k?.key || '').trim())).filter(Boolean)
+    : [];
+  return [...new Set([...ONLINE_COMPILER_KEYS, ...customArr])];
+};
+
+// ── GET/POST Key Count & Live Summary ──
+app.all(['/api/onlinecompiler/count', '/api/compiler/count'], (req, res) => {
   const customKeys = Array.isArray(req.body?.keys) ? req.body.keys : [];
-  const allUnique = [...JDOODLE_KEYS];
-  for (const k of customKeys) {
-    const cid = k?.clientId || k?.id;
-    const csecret = k?.clientSecret || k?.secret;
-    if (cid && csecret && !allUnique.some(x => x.clientId === cid)) {
-      allUnique.push({ clientId: cid, clientSecret: csecret });
-    }
-  }
+  const allUnique = getAllOnlineCompilerKeys(customKeys);
 
-  const allWithStatus = allUnique.map(keyObj => {
-    const { clientId, clientSecret } = keyObj;
-    const cached = JDOODLE_KEY_STATUS[clientId] || { status: 'non-finished', used: 0, lastError: null };
+  const allWithStatus = allUnique.map(key => {
+    const cached = ONLINE_COMPILER_KEY_STATUS[key] || { status: 'active', used: 0, lastError: null };
     return {
-      clientId,
-      clientSecret,
-      status: cached.status || 'non-finished',
+      apiKey: key,
+      status: cached.status || 'active',
       used: cached.used !== undefined ? cached.used : 0,
       errorReason: cached.lastError || null
     };
   });
 
-  const nonFinished = allWithStatus.filter(r => r.status === 'non-finished');
-  const finished = allWithStatus.filter(r => r.status === 'finished');
+  const active = allWithStatus.filter(r => r.status === 'active');
+  const exhausted = allWithStatus.filter(r => r.status === 'exhausted');
 
   return res.json({
     totalCount: allUnique.length,
-    nonFinished,
-    finished,
+    active,
+    exhausted,
     all: allWithStatus
   });
 });
 
-app.post('/api/jdoodle/status', async (req, res) => {
+// ── Test & Verify Status of All OnlineCompiler Keys Live ──
+app.post(['/api/onlinecompiler/status', '/api/compiler/status'], async (req, res) => {
   const customKeys = Array.isArray(req.body?.keys) ? req.body.keys : [];
-  const allUnique = [...JDOODLE_KEYS];
-  for (const k of customKeys) {
-    const cid = k?.clientId || k?.id;
-    const csecret = k?.clientSecret || k?.secret;
-    if (cid && csecret && !allUnique.some(x => x.clientId === cid)) {
-      allUnique.push({ clientId: cid, clientSecret: csecret });
-    }
-  }
+  const allUnique = getAllOnlineCompilerKeys(customKeys);
 
-  const results = [];
-  const chunkSize = 5;
-  for (let i = 0; i < allUnique.length; i += chunkSize) {
-    const chunk = allUnique.slice(i, i + chunkSize);
-    const chunkResults = await Promise.all(chunk.map(async (keyObj) => {
-      const { clientId, clientSecret } = keyObj;
-      let used = null;
-      let status = 'non-finished';
-      let errorReason = null;
+  const results = await Promise.all(allUnique.map(async (key) => {
+    let status = 'active';
+    let errorReason = null;
+    let used = ONLINE_COMPILER_KEY_STATUS[key]?.used || 0;
 
-      if (JDOODLE_KEY_STATUS[clientId]?.status === 'finished') {
-        status = 'finished';
-        errorReason = JDOODLE_KEY_STATUS[clientId].lastError || 'Quota exhausted during compilation';
-      }
-
-      try {
-        const resp = await axios.post('https://api.jdoodle.com/v1/credit-spent', { clientId, clientSecret }, { timeout: 10000 });
-        if (resp.data && typeof resp.data.used === 'number') {
-          used = resp.data.used;
-          if (used >= 22) {
-            status = 'finished';
-            errorReason = `Daily credit quota limit reached (${used}/22 used)`;
-          } else if (status !== 'finished') {
-            status = 'non-finished';
-            errorReason = null;
-          }
-          JDOODLE_KEY_STATUS[clientId] = { status, used, lastError: errorReason, checkedAt: Date.now() };
-        } else if (resp.data?.statusCode === 429 || resp.data?.statusCode === 401 || resp.data?.error) {
-          status = 'finished';
-          errorReason = resp.data?.error || `Unauthorized or Limit Exceeded (${resp.data?.statusCode})`;
-          JDOODLE_KEY_STATUS[clientId] = { status, used: 22, lastError: errorReason, checkedAt: Date.now() };
+    try {
+      // Test the API key with a lightweight C execution ping
+      const resp = await axios.post('https://api.onlinecompiler.io/api/run-code-sync/', {
+        compiler: 'gcc-15',
+        code: 'int main(){return 0;}',
+        input: ''
+      }, {
+        timeout: 9000,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': key,
+          'ApiKey': key
         }
-      } catch (err) {
-        const errMsg = err?.response?.data?.error || err?.message;
-        if (errMsg && (errMsg.toLowerCase().includes('daily limit') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('401'))) {
-          status = 'finished';
-          errorReason = errMsg;
-          JDOODLE_KEY_STATUS[clientId] = { status, used: 22, lastError: errorReason, checkedAt: Date.now() };
-        } else {
-          // Keep active status if it's just a rate limit/network timeout when checking credit status
-          status = JDOODLE_KEY_STATUS[clientId]?.status || 'non-finished';
-          used = JDOODLE_KEY_STATUS[clientId]?.used !== undefined ? JDOODLE_KEY_STATUS[clientId]?.used : 0;
-          errorReason = null;
-        }
+      });
+
+      const errCheck = ((resp.data?.error || '') + ' ' + (resp.data?.message || '')).toLowerCase();
+      if (
+        resp.status === 429 || resp.status === 401 || resp.status === 403 ||
+        errCheck.includes('limit') || errCheck.includes('quota') || errCheck.includes('invalid') || errCheck.includes('unauthorized')
+      ) {
+        status = 'exhausted';
+        errorReason = resp.data?.error || resp.data?.message || 'Quota Limit Exceeded';
+      } else {
+        status = 'active';
+        errorReason = null;
       }
-
-      return {
-        clientId,
-        clientSecret,
-        status: JDOODLE_KEY_STATUS[clientId]?.status || status,
-        used: JDOODLE_KEY_STATUS[clientId]?.used !== undefined ? JDOODLE_KEY_STATUS[clientId]?.used : (used !== null ? used : 0),
-        errorReason: JDOODLE_KEY_STATUS[clientId]?.lastError || errorReason
-      };
-    }));
-    results.push(...chunkResults);
-    if (i + chunkSize < allUnique.length) {
-      await new Promise(r => setTimeout(r, 200));
+    } catch (err) {
+      const errMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message || '';
+      const errStatus = err?.response?.status;
+      if (errStatus === 429 || errStatus === 401 || errStatus === 403 || errMsg.toLowerCase().includes('limit') || errMsg.toLowerCase().includes('quota')) {
+        status = 'exhausted';
+        errorReason = errMsg || `HTTP ${errStatus} Quota Reached`;
+      } else {
+        // Network timeout / transient issue, keep current status
+        status = ONLINE_COMPILER_KEY_STATUS[key]?.status || 'active';
+        errorReason = null;
+      }
     }
-  }
 
-  const nonFinished = results.filter(r => r.status === 'non-finished');
-  const finished = results.filter(r => r.status === 'finished');
+    ONLINE_COMPILER_KEY_STATUS[key] = {
+      status,
+      used,
+      lastError: errorReason,
+      lastChecked: Date.now()
+    };
 
-  return res.json({ nonFinished, finished, all: results, totalCount: results.length });
+    return {
+      apiKey: key,
+      status,
+      used,
+      errorReason
+    };
+  }));
+
+  const active = results.filter(r => r.status === 'active');
+  const exhausted = results.filter(r => r.status === 'exhausted');
+
+  return res.json({
+    active,
+    exhausted,
+    all: results,
+    totalCount: results.length
+  });
 });
 
-app.post('/api/jdoodle/add', (req, res) => {
-  const clientId = req.body?.clientId || req.body?.id;
-  const clientSecret = req.body?.clientSecret || req.body?.secret;
-  if (!clientId || !clientSecret) {
-    return res.status(400).json({ error: 'clientId and clientSecret are required' });
+// ── Add New OnlineCompiler.io Key to Backend Pool ──
+app.post(['/api/onlinecompiler/add', '/api/compiler/add'], (req, res) => {
+  const rawKey = req.body?.apiKey || req.body?.key;
+  if (!rawKey || typeof rawKey !== 'string' || !rawKey.trim()) {
+    return res.status(400).json({ error: 'Valid apiKey string is required' });
   }
-  if (!JDOODLE_KEYS.some(k => k.clientId === clientId)) {
-    JDOODLE_KEYS.push({ clientId, clientSecret });
-    JDOODLE_KEY_STATUS[clientId] = { status: 'non-finished', used: 0, lastError: null, checkedAt: Date.now() };
+
+  const key = rawKey.trim();
+  if (!ONLINE_COMPILER_KEYS.includes(key)) {
+    ONLINE_COMPILER_KEYS.push(key);
+    ONLINE_COMPILER_KEY_STATUS[key] = { status: 'active', used: 0, lastError: null, lastChecked: Date.now() };
   }
-  return res.json({ success: true, count: JDOODLE_KEYS.length });
+
+  return res.json({ success: true, count: ONLINE_COMPILER_KEYS.length });
 });
 
+// ── Time Endpoint ──
 app.get('/api/time', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   return res.json({ now: Date.now() });
 });
 
+// ── Core Code Compilation Endpoint with Multi-Key Rotation & Failover ──
 app.post('/api/compile', async (req, res) => {
-  const { code, compiler, apiKey } = req.body;
+  const { code, compiler, apiKey, onlineCompilerKeys } = req.body;
 
   if (!code || !compiler) {
     return res.status(400).json({ error: 'Code and compiler parameters are required' });
@@ -332,19 +176,15 @@ app.post('/api/compile', async (req, res) => {
   };
 
   const ocCompiler = ONLINE_COMPILER_LANG[compLower] || (isC ? 'gcc-15' : 'g++-15');
-  const activeApiKey = apiKey || DEFAULT_API_KEY;
 
-  const keys = [
-    "ccb79ad09699924cb025d0ba0b6690ed",
-    activeApiKey,
-    "28152502bdcf827c763a92f0bf7ed806",
-    "42084204b0195f78ed851ac35c43a059"
-  ].filter(Boolean);
+  // Collect all potential OnlineCompiler keys to try in failover order
+  const requestKeys = Array.isArray(onlineCompilerKeys) ? onlineCompilerKeys : [];
+  if (apiKey) requestKeys.unshift(apiKey);
 
-  const uniqueKeys = [...new Set(keys)];
+  const allKeys = getAllOnlineCompilerKeys(requestKeys);
 
-  // 1. Try OnlineCompiler Engine
-  for (const key of uniqueKeys) {
+  // 1. Loop through OnlineCompiler.io keys (Automatic Failover if limit is finished)
+  for (const key of allKeys) {
     try {
       const ocPayload = {
         compiler: ocCompiler,
@@ -353,7 +193,7 @@ app.post('/api/compile', async (req, res) => {
       };
 
       const ocResp = await axios.post('https://api.onlinecompiler.io/api/run-code-sync/', ocPayload, {
-        timeout: 20000,
+        timeout: 18000,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': key,
@@ -376,7 +216,37 @@ app.post('/api/compile', async (req, res) => {
         ocResp.data?.message
       ].filter(s => typeof s === 'string' && s.trim().length > 0 && s !== outputText).join('\n');
 
-      if (errorText.includes('Internal error: code execution failed') || (ocResp.data?.status === 'error' && !outputText.trim())) {
+      // Check if error is quota exhaustion or authorization failure
+      const checkStr = (errorText + ' ' + (ocResp.data?.status || '')).toLowerCase();
+      if (
+        ocResp.status === 429 || ocResp.status === 401 || ocResp.status === 403 ||
+        checkStr.includes('limit exceeded') ||
+        checkStr.includes('quota') ||
+        checkStr.includes('daily limit') ||
+        checkStr.includes('invalid api key') ||
+        checkStr.includes('unauthorized')
+      ) {
+        ONLINE_COMPILER_KEY_STATUS[key] = {
+          status: 'exhausted',
+          lastError: errorText || 'Quota/Limit Finished',
+          lastChecked: Date.now()
+        };
+        console.warn(`OnlineCompiler key (${key.slice(0, 6)}...${key.slice(-4)}) limit finished. Failing over to next key...`);
+        continue; // Try next key!
+      }
+
+      // Record successful active use
+      ONLINE_COMPILER_KEY_STATUS[key] = {
+        status: 'active',
+        used: (ONLINE_COMPILER_KEY_STATUS[key]?.used || 0) + 1,
+        lastError: null,
+        lastChecked: Date.now()
+      };
+
+      if (
+        (errorText.includes('Internal error: code execution failed') || ocResp.data?.status === 'timeout' || ocResp.data?.signal === 'SIGXCPU' || ocResp.data?.signal === 'SIGKILL') &&
+        !errorText.includes('error:') && !errorText.includes('fatal error:') && !errorText.includes('undefined reference')
+      ) {
         errorText = "Runtime Error (SIGSEGV / Infinite Loop / Out-of-Bounds): Execution failed or timed out. Please check your loop conditions and array/pointer bounds.";
       }
 
@@ -387,69 +257,50 @@ app.post('/api/compile', async (req, res) => {
 
       return res.json({
         program_message: combinedMessage,
-        compiler_error: errorText
+        compiler_error: errorText,
+        keyUsed: `${key.slice(0, 6)}...${key.slice(-4)}`
       });
     } catch (err) {
-      console.warn(`OnlineCompiler attempt failed with key (${key.slice(0, 6)}...):`, err?.message);
-    }
-  }
-
-  // 2. Automatic Failover to JDoodle for C / C++
-  const jdLanguage = isC ? "c" : "cpp17";
-  const jdVersionIndex = isC ? "5" : "1";
-  const dynamicKeys = Array.isArray(req.body.jdoodleKeys) ? req.body.jdoodleKeys : [];
-  const mergedKeys = [...JDOODLE_KEYS];
-  for (const dk of dynamicKeys) {
-    const cid = dk?.clientId || dk?.id;
-    const csecret = dk?.clientSecret || dk?.secret;
-    if (cid && csecret && !mergedKeys.some(k => k.clientId === cid)) {
-      mergedKeys.push({ clientId: cid, clientSecret: csecret });
-    }
-  }
-
-  for (let i = 0; i < mergedKeys.length; i++) {
-    const { clientId, clientSecret } = mergedKeys[i];
-    try {
-      const jdResp = await axios.post('https://api.jdoodle.com/v1/execute', {
-        clientId,
-        clientSecret,
-        script: code,
-        language: jdLanguage,
-        versionIndex: jdVersionIndex
-      }, {
-        timeout: 20000,
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const errorMsg = jdResp.data?.error || "";
-      if (
-        jdResp.data?.statusCode === 429 ||
-        jdResp.data?.statusCode === 401 ||
-        errorMsg.toLowerCase().includes('daily limit') ||
-        errorMsg.toLowerCase().includes('limit exceeded') ||
-        errorMsg.toLowerCase().includes('credit')
-      ) {
-        continue;
+      const errMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message || '';
+      const errStatus = err?.response?.status;
+      if (errStatus === 429 || errStatus === 401 || errStatus === 403 || errMsg.toLowerCase().includes('limit') || errMsg.toLowerCase().includes('quota')) {
+        ONLINE_COMPILER_KEY_STATUS[key] = {
+          status: 'exhausted',
+          lastError: errMsg || `HTTP ${errStatus} Quota Limit`,
+          lastChecked: Date.now()
+        };
       }
-
-      const output = jdResp.data?.output || "No output returned.";
-      const isError = jdResp.data?.statusCode !== 200 || 
-        output.includes('error:') || 
-        output.includes('fatal error:') ||
-        output.includes('undefined reference');
-
-      return res.json({
-        program_message: output,
-        compiler_error: isError ? output : ""
-      });
-    } catch (jdErr) {
+      console.warn(`OnlineCompiler key (${key.slice(0, 6)}...${key.slice(-4)}) error: ${errMsg}. Trying next key...`);
       continue;
     }
   }
 
+  // 2. High-Availability Secondary Failover Engine (Piston) if all OnlineCompiler keys fail
+  try {
+    const pistonLang = isC ? 'c' : 'cpp';
+    const pistonResp = await axios.post('https://emkc.org/api/v2/piston/execute', {
+      language: pistonLang,
+      version: '*',
+      files: [{ content: code }]
+    }, { timeout: 15000 });
+
+    const runOut = pistonResp.data?.run?.stdout || '';
+    const runErr = pistonResp.data?.run?.stderr || '';
+    const compileErr = pistonResp.data?.compile?.stderr || '';
+    const combined = [runOut, runErr, compileErr].filter(Boolean).join('\n');
+
+    return res.json({
+      program_message: combined || 'No output returned.',
+      compiler_error: compileErr || runErr || '',
+      engine: 'piston-failover'
+    });
+  } catch (pistonErr) {
+    console.error('All failover compiler engines exhausted:', pistonErr?.message);
+  }
+
   return res.status(500).json({
-    error: 'Compilation failed on compiler engines.',
-    detail: 'All compiler endpoints or keys failed to execute.'
+    error: 'Compilation failed across all available OnlineCompiler.io keys.',
+    detail: 'All OnlineCompiler.io keys in the pool have finished their quota. Please add new OnlineCompiler.io API keys in the Admin Dashboard.'
   });
 });
 
@@ -461,7 +312,7 @@ app.get(/^(.*)$/, (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
-// Global Express Error Handler to prevent server crashes on malformed requests or unhandled rejections during 200+ user spikes
+// Global Express Error Handler
 app.use((err, req, res, next) => {
   console.error('Unhandled Server Error:', err?.message || err);
   res.status(500).json({ error: 'Internal Server Error', detail: err?.message || 'Unexpected server exception occurred.' });
@@ -471,11 +322,11 @@ if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Backend server running on http://localhost:${PORT}`);
-    console.log(`JDoodle API Keys Loaded: ${JDOODLE_KEYS.length} keys available for automatic failover.`);
+    console.log(`OnlineCompiler.io Keys Loaded: ${ONLINE_COMPILER_KEYS.length} keys available for automatic failover.`);
   });
 }
 
-// Process-level crash protection for 200+ concurrent compile requests
+// Process-level crash protection
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception caught:', err?.message || err);
 });

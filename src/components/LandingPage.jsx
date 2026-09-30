@@ -14,7 +14,7 @@ const DEFAULT_BRANDING = {
   tagline: 'THE ULTIMATE DEBUGGING CHALLENGE',
   buttonText: 'START_SYSTEM',
   footerText: '© 2026 Ayya Nadar Janaki Ammal College. Dept. of Computer Applications. All rights reserved.',
-  roundsText: 'ROUND 1: C \u00a0➔\u00a0 ROUND 2: C++',
+  roundsText: 'C++ DEBUGGING (5 MISSIONS)',
   modalTitle: 'SYSTEM ACCESS'
 };
 
@@ -27,12 +27,22 @@ const LandingPage = () => {
   const [langSettings, setLangSettings] = useState({ c: true, cpp: true });
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
   const [usersList, setUsersList] = useState([]);
+  const [questionsCount, setQuestionsCount] = useState(2);
   const [popup, setPopup] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     // Clear any previous participant's session from localStorage when visiting landing page
     clearFullUserSession();
+
+    const unsubEvent = onSnapshot(doc(db, 'settings', 'event'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.questionsPerStudent !== undefined && !isNaN(parseInt(data.questionsPerStudent))) {
+          setQuestionsCount(parseInt(data.questionsPerStudent));
+        }
+      }
+    });
 
     const unsubLang = onSnapshot(doc(db, 'settings', 'language'), (docSnap) => {
       if (docSnap.exists()) {
@@ -69,6 +79,7 @@ const LandingPage = () => {
     });
 
     return () => {
+      unsubEvent();
       unsubLang();
       unsubBranding();
       unsubUsers();
@@ -384,8 +395,15 @@ const LandingPage = () => {
               <div style={{ background: 'rgba(255, 0, 60, 0.08)', border: '1px solid rgba(255, 0, 60, 0.4)', padding: '0.75rem', borderRadius: '4px', textAlign: 'center' }}>
                 <div style={{ color: '#ff003c', fontSize: '0.75rem', letterSpacing: '1px', fontFamily: 'var(--font-heading)', marginBottom: '4px' }}>EVENT ROUNDS</div>
                 <div style={{ color: '#ffffff', fontSize: '0.9rem', fontFamily: 'var(--font-mono)', fontWeight: 'bold' }}>
-                  {branding.roundsText || 'ROUND 1: C \u00a0➔\u00a0 ROUND 2: C++'}
+                  {branding.roundsText && !branding.roundsText.includes('(5 MISSIONS)')
+                    ? branding.roundsText
+                    : `C++ DEBUGGING (${questionsCount} MISSIONS)`}
                 </div>
+                {detectedUser && (
+                  <div style={{ marginTop: '5px', fontSize: '0.75rem', color: (detectedUser.category === 'Hard' ? '#ff003c' : detectedUser.category === 'Medium' ? '#f59e0b' : '#10b981'), fontWeight: 'bold', letterSpacing: '1px' }}>
+                    CATEGORY: {(detectedUser.category || 'Easy').toUpperCase()}
+                  </div>
+                )}
               </div>
               <button
                 type="submit"

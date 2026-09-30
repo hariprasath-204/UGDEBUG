@@ -7,7 +7,7 @@ import LoadingOverlay from './LoadingOverlay';
 import PopupMessage from './PopupMessage';
 import { syncClock, getNow } from '../utils/timeSync';
 import { sortParticipants, getStudentCategory, getSortedParticipantsByCategory } from '../utils/ranking';
-import { Trophy, Clock, FileText, Users, Activity, FileDown, Code, MonitorPlay, Sliders, Trash2, RefreshCw, Edit, Award, Sparkles, GraduationCap, PenTool, Upload, CheckCircle, Image, X } from 'lucide-react';
+import { Trophy, Clock, FileText, Users, Activity, FileDown, Code, MonitorPlay, Sliders, Trash2, RefreshCw, Edit, Award, Sparkles, GraduationCap, PenTool, Upload, CheckCircle, Image, X, Calculator, Search, Check, AlertCircle, Percent, BarChart3, Layers } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
 
@@ -106,7 +106,7 @@ const DEFAULT_BRANDING = {
   tagline: 'THE ULTIMATE DEBUGGING CHALLENGE',
   buttonText: 'START_SYSTEM',
   footerText: '© 2026 Ayya Nadar Janaki Ammal College. Dept. of Computer Applications. All rights reserved.',
-  roundsText: 'ROUND 1: C \u00a0➔\u00a0 ROUND 2: C++',
+  roundsText: 'C++ DEBUGGING (5 MISSIONS)',
   modalTitle: 'SYSTEM ACCESS'
 };
 
@@ -116,7 +116,7 @@ const AdminDashboard = () => {
   const [popup, setPopup] = useState(null);
   const [selectedConclusionUser, setSelectedConclusionUser] = useState(null);
   const [selectedSubUserId, setSelectedSubUserId] = useState(null);
-  const [selectedSubPhase, setSelectedSubPhase] = useState('c');
+  const [selectedSubPhase, setSelectedSubPhase] = useState('cpp');
   const [adminCategoryFilter, setAdminCategoryFilter] = useState('UG');
   const [reportType, setReportType] = useState('scoresheet'); // 'scoresheet' or 'winners'
   const [reportEventName, setReportEventName] = useState('CODATHAN - DEBUGGING EVENT');
@@ -125,6 +125,11 @@ const AdminDashboard = () => {
   const [esignMap, setEsignMap] = useState({}); // { [sigTitle]: 'data:image/png;base64,...' }
   const [drawingSigTitle, setDrawingSigTitle] = useState(null);
   const [brandingData, setBrandingData] = useState(DEFAULT_BRANDING);
+  const [pointSubTab, setPointSubTab] = useState('students'); // 'students' or 'bank'
+  const [pointSearchQuery, setPointSearchQuery] = useState('');
+  const [pointCategoryFilter, setPointCategoryFilter] = useState('ALL'); // 'ALL', 'Easy', 'Medium', 'Hard'
+  const [selectedPointInspectStudent, setSelectedPointInspectStudent] = useState(null);
+  const [questionSearchQuery, setQuestionSearchQuery] = useState('');
 
   const handleFileUpload = (sigTitle, e) => {
     const file = e.target.files[0];
@@ -141,16 +146,17 @@ const AdminDashboard = () => {
 
   // Question Form State
   const [formData, setFormData] = useState({
-    title: '', description: '', expectedOutput: '', points: 100, phase: 'c',
+    title: '', description: '', expectedOutput: '', points: 100, phase: 'cpp', category: 'Easy',
     variants: {
       c: { initialCode: '', correctCode: '', errorLines: '' },
       cpp: { initialCode: '', correctCode: '', errorLines: '' }
     }
   });
   const [status, setStatus] = useState('');
-  const [variantTab, setVariantTab] = useState('c');
+  const [variantTab, setVariantTab] = useState('cpp');
   const [questionsList, setQuestionsList] = useState([]);
   const [editingQuestionId, setEditingQuestionId] = useState(null);
+  const [questionCategoryFilter, setQuestionCategoryFilter] = useState('ALL');
 
   // Bulk Question Import State
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
@@ -250,6 +256,7 @@ const AdminDashboard = () => {
           expectedOutput: q.expectedOutput || '',
           points: parseInt(q.points) || 100,
           phase: phase,
+          category: (q.category && ['Easy', 'Medium', 'Hard'].includes(q.category)) ? q.category : 'Easy',
           variants: processedVariants
         };
       });
@@ -309,13 +316,14 @@ const AdminDashboard = () => {
   };
 
   // User Form State
-  const [userForm, setUserForm] = useState({ name: '', rollNo: '' });
+  const [userForm, setUserForm] = useState({ name: '', rollNo: '', category: 'Easy' });
   const [userStatus, setUserStatus] = useState('');
   const [editingUserId, setEditingUserId] = useState(null);
 
   // Event State
   const [eventStatus, setEventStatus] = useState('waiting');
   const [durationMinutes, setDurationMinutes] = useState(60);
+  const [questionsPerStudent, setQuestionsPerStudent] = useState(2);
   const [timeLeft, setTimeLeft] = useState('');
   const [eventEndTime, setEventEndTime] = useState(null);
 
@@ -346,11 +354,11 @@ const AdminDashboard = () => {
   const [langSettings, setLangSettings] = useState({ c: true, cpp: true });
   const [phaseLangs, setPhaseLangs] = useState({ easy: 'c', medium: 'cpp', c: 'c', cpp: 'cpp', apiKey: 'ccb79ad09699924cb025d0ba0b6690ed' });
   
-  // JDoodle Java API Keys Management State
-  const [jdoodleKeys, setJdoodleKeys] = useState([]);
-  const [jdoodleStatusList, setJdoodleStatusList] = useState({ nonFinished: [], finished: [], all: [], totalCount: 0 });
-  const [isCheckingJdoodle, setIsCheckingJdoodle] = useState(false);
-  const [newJavaKey, setNewJavaKey] = useState({ clientId: '', clientSecret: '' });
+  // OnlineCompiler.io API Keys Management State
+  const [onlineCompilerKeys, setOnlineCompilerKeys] = useState([]);
+  const [compilerStatusList, setCompilerStatusList] = useState({ active: [], exhausted: [], all: [], totalCount: 0 });
+  const [isCheckingCompiler, setIsCheckingCompiler] = useState(false);
+  const [newCompilerKey, setNewCompilerKey] = useState('');
 
   // Live Data
   const [liveUsers, setLiveUsers] = useState([]);
@@ -367,9 +375,14 @@ const AdminDashboard = () => {
         } else if (!durationMinutes || parseFloat(durationMinutes) <= 0) {
           setDurationMinutes(60);
         }
+        if (data.questionsPerStudent !== undefined && data.questionsPerStudent !== null && !isNaN(parseInt(data.questionsPerStudent))) {
+          setQuestionsPerStudent(parseInt(data.questionsPerStudent));
+        } else {
+          setQuestionsPerStudent(2);
+        }
         setEventEndTime(data.endTime || null);
       } else {
-        setDoc(eventDocRef, { status: 'waiting', endTime: null, durationMinutes: 60 });
+        setDoc(eventDocRef, { status: 'waiting', endTime: null, durationMinutes: 60, questionsPerStudent: 2 });
       }
     });
 
@@ -382,11 +395,11 @@ const AdminDashboard = () => {
         setPhaseLangs({
           easy: d.easy || 'c',
           medium: d.medium || 'cpp',
-          hard: d.hard || 'java',
+          hard: d.hard || 'cpp',
           apiKey: d.apiKey || 'ccb79ad09699924cb025d0ba0b6690ed'
         });
       } else {
-        setDoc(langDocRef, { easy: 'c', medium: 'cpp', hard: 'java', apiKey: 'ccb79ad09699924cb025d0ba0b6690ed', c: true, cpp: true, java: true });
+        setDoc(langDocRef, { easy: 'c', medium: 'cpp', hard: 'cpp', apiKey: 'ccb79ad09699924cb025d0ba0b6690ed', c: true, cpp: true });
       }
     });
 
@@ -407,17 +420,17 @@ const AdminDashboard = () => {
       setQuestionsList(qs);
     });
 
-    // Listen to JDoodle Java API Keys
-    const jdoodleDocRef = doc(db, 'settings', 'jdoodle');
-    const unsubJdoodle = onSnapshot(jdoodleDocRef, (docSnap) => {
+    // Listen to OnlineCompiler.io API Keys
+    const compilerDocRef = doc(db, 'settings', 'onlinecompiler');
+    const unsubCompiler = onSnapshot(compilerDocRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         const keys = Array.isArray(data.keys) ? data.keys : [];
-        setJdoodleKeys(keys);
-        fetchInstantJdoodleStatus(keys);
-        fetchJdoodleStatus(keys);
+        setOnlineCompilerKeys(keys);
+        fetchInstantCompilerStatus(keys);
+        fetchCompilerStatus(keys);
       } else {
-        setDoc(jdoodleDocRef, { keys: [] });
+        setDoc(compilerDocRef, { keys: [] });
       }
     });
 
@@ -447,75 +460,76 @@ const AdminDashboard = () => {
       unsubLang();
       unsubUsers();
       unsubQuestions();
-      unsubJdoodle();
+      unsubCompiler();
       unsubBranding();
     };
   }, []);
 
-  const fetchInstantJdoodleStatus = async (keysToTest = jdoodleKeys) => {
+  const fetchInstantCompilerStatus = async (keysToTest = onlineCompilerKeys) => {
     try {
-      const res = await axios.post('/api/jdoodle/count', { keys: keysToTest });
+      const res = await axios.post('/api/onlinecompiler/count', { keys: keysToTest });
       if (res.data) {
-        setJdoodleStatusList(prev => ({
+        setCompilerStatusList(prev => ({
           ...prev,
           totalCount: res.data.totalCount || (res.data.all ? res.data.all.length : 0),
           all: res.data.all || prev.all || [],
-          nonFinished: res.data.nonFinished || prev.nonFinished || [],
-          finished: res.data.finished || prev.finished || []
+          active: res.data.active || prev.active || [],
+          exhausted: res.data.exhausted || prev.exhausted || []
         }));
       }
     } catch (err) {
-      console.error('Failed to fetch instant JDoodle status:', err);
+      console.error('Failed to fetch instant OnlineCompiler status:', err);
     }
   };
 
-  const fetchJdoodleStatus = async (keysToTest = jdoodleKeys) => {
-    setIsCheckingJdoodle(true);
-    await fetchInstantJdoodleStatus(keysToTest);
+  const fetchCompilerStatus = async (keysToTest = onlineCompilerKeys) => {
+    setIsCheckingCompiler(true);
+    await fetchInstantCompilerStatus(keysToTest);
     try {
-      const res = await axios.post('/api/jdoodle/status', { keys: keysToTest });
+      const res = await axios.post('/api/onlinecompiler/status', { keys: keysToTest });
       if (res.data) {
-        setJdoodleStatusList({
-          nonFinished: res.data.nonFinished || [],
-          finished: res.data.finished || [],
+        setCompilerStatusList({
+          active: res.data.active || [],
+          exhausted: res.data.exhausted || [],
           all: res.data.all || [],
           totalCount: res.data.totalCount || (res.data.all ? res.data.all.length : 0)
         });
       }
     } catch (err) {
-      console.error('Failed to fetch JDoodle status:', err);
+      console.error('Failed to fetch OnlineCompiler status:', err);
     } finally {
-      setIsCheckingJdoodle(false);
+      setIsCheckingCompiler(false);
     }
   };
 
-  const handleAddJavaKey = async (e) => {
+  const handleAddCompilerKey = async (e) => {
     e.preventDefault();
-    if (!newJavaKey.clientId.trim() || !newJavaKey.clientSecret.trim()) return;
+    const cleanKey = newCompilerKey.trim();
+    if (!cleanKey) return;
     setIsLoading(true);
     try {
-      const updatedKeys = [...jdoodleKeys, { clientId: newJavaKey.clientId.trim(), clientSecret: newJavaKey.clientSecret.trim() }];
-      await setDoc(doc(db, 'settings', 'jdoodle'), { keys: updatedKeys }, { merge: true });
-      await axios.post('/api/jdoodle/add', { clientId: newJavaKey.clientId.trim(), clientSecret: newJavaKey.clientSecret.trim() });
-      setNewJavaKey({ clientId: '', clientSecret: '' });
-      showPopup('New Java API key added successfully!', 'success');
-      await fetchInstantJdoodleStatus(updatedKeys);
-      fetchJdoodleStatus(updatedKeys);
+      const updatedKeys = [...new Set([...onlineCompilerKeys, cleanKey])];
+      await setDoc(doc(db, 'settings', 'onlinecompiler'), { keys: updatedKeys }, { merge: true });
+      await axios.post('/api/onlinecompiler/add', { apiKey: cleanKey });
+      setNewCompilerKey('');
+      showPopup('New OnlineCompiler.io API key added successfully!', 'success');
+      await fetchInstantCompilerStatus(updatedKeys);
+      fetchCompilerStatus(updatedKeys);
     } catch (err) {
-      showPopup('Failed to add Java API key', 'error');
+      showPopup('Failed to add OnlineCompiler API key', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDeleteJavaKey = async (clientIdToRemove) => {
-    if (window.confirm('Remove this custom Java API key from settings?')) {
+  const handleDeleteCompilerKey = async (keyToRemove) => {
+    if (window.confirm('Remove this custom OnlineCompiler.io API key from settings?')) {
       setIsLoading(true);
-      const updatedKeys = jdoodleKeys.filter(k => k.clientId !== clientIdToRemove);
-      await setDoc(doc(db, 'settings', 'jdoodle'), { keys: updatedKeys }, { merge: true });
-      showPopup('Java API key removed', 'success');
-      await fetchInstantJdoodleStatus(updatedKeys);
-      fetchJdoodleStatus(updatedKeys);
+      const updatedKeys = onlineCompilerKeys.filter(k => k !== keyToRemove);
+      await setDoc(doc(db, 'settings', 'onlinecompiler'), { keys: updatedKeys }, { merge: true });
+      showPopup('OnlineCompiler.io API key removed', 'success');
+      await fetchInstantCompilerStatus(updatedKeys);
+      fetchCompilerStatus(updatedKeys);
       setIsLoading(false);
     }
   };
@@ -562,7 +576,7 @@ const AdminDashboard = () => {
       if (editingQuestionId) {
         await updateDoc(doc(db, 'questions', editingQuestionId), {
           title: formData.title, description: formData.description, expectedOutput: formData.expectedOutput,
-          points: parseInt(formData.points), phase: formData.phase, variants: processedVariants
+          points: parseInt(formData.points), phase: formData.phase, category: formData.category || 'Easy', variants: processedVariants
         });
         showPopup('Question updated successfully!', 'success');
         setStatus('Question updated successfully!');
@@ -570,14 +584,14 @@ const AdminDashboard = () => {
       } else {
         await addDoc(collection(db, 'questions'), {
           title: formData.title, description: formData.description, expectedOutput: formData.expectedOutput,
-          points: parseInt(formData.points), phase: formData.phase, variants: processedVariants, createdAt: serverTimestamp()
+          points: parseInt(formData.points), phase: formData.phase, category: formData.category || 'Easy', variants: processedVariants, createdAt: serverTimestamp()
         });
         showPopup('Question added successfully!', 'success');
         setStatus('Question added successfully!');
       }
 
       setFormData({
-        title: '', description: '', expectedOutput: '', points: 100, phase: 'c',
+        title: '', description: '', expectedOutput: '', points: 100, phase: 'cpp', category: 'Easy',
         variants: { c: { initialCode: '', correctCode: '', errorLines: '' }, cpp: { initialCode: '', correctCode: '', errorLines: '' } }
       });
     } catch (error) {
@@ -591,13 +605,14 @@ const AdminDashboard = () => {
 
   const handleEditQuestion = (q) => {
     const pMap = { easy: 'c', medium: 'cpp', hard: 'cpp', c: 'c', cpp: 'cpp' };
-    const p = pMap[q.phase] || q.phase || 'c';
+    const p = pMap[q.phase] || q.phase || 'cpp';
     setFormData({
       title: q.title || '',
       description: q.description || '',
       expectedOutput: q.expectedOutput || '',
       points: q.points || 100,
       phase: p,
+      category: q.category || 'Easy',
       variants: {
         c: { initialCode: q.variants?.c?.initialCode || '', correctCode: q.variants?.c?.correctCode || '', errorLines: q.variants?.c?.errorLines || '' },
         cpp: { initialCode: q.variants?.cpp?.initialCode || '', correctCode: q.variants?.cpp?.correctCode || '', errorLines: q.variants?.cpp?.errorLines || '' }
@@ -614,20 +629,20 @@ const AdminDashboard = () => {
     try {
       if (editingUserId) {
         await updateDoc(doc(db, 'users', editingUserId), {
-          name: userForm.name, rollNo: userForm.rollNo
+          name: userForm.name, rollNo: userForm.rollNo, category: userForm.category || 'Easy'
         });
         showPopup('User updated successfully!', 'success');
         setUserStatus('User updated successfully!');
         setEditingUserId(null);
       } else {
         await addDoc(collection(db, 'users'), {
-          name: userForm.name, rollNo: userForm.rollNo, selectedLanguage: null,
-          tabSwitches: 0, copyPasteCount: 0, score: 0, currentCode: '', isFinished: false, joinedAt: serverTimestamp()
+          name: userForm.name, rollNo: userForm.rollNo, category: userForm.category || 'Easy',
+          selectedLanguage: null, tabSwitches: 0, copyPasteCount: 0, score: 0, currentCode: '', isFinished: false, joinedAt: serverTimestamp()
         });
         showPopup('User added successfully!', 'success');
         setUserStatus('User added successfully!');
       }
-      setUserForm({ name: '', rollNo: '' });
+      setUserForm({ name: '', rollNo: '', category: 'Easy' });
     } catch (err) {
       showPopup(editingUserId ? 'Failed to update user.' : 'Failed to add user.', 'error');
       setUserStatus(editingUserId ? 'Failed to update user.' : 'Failed to add user.');
@@ -637,9 +652,29 @@ const AdminDashboard = () => {
   };
 
   const handleEditUser = (u) => {
-    setUserForm({ name: u.name || '', rollNo: u.rollNo || '' });
+    setUserForm({ name: u.name || '', rollNo: u.rollNo || '', category: u.category || 'Easy' });
     setEditingUserId(u.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleUpdateQuestionsPerStudent = async (newCount) => {
+    const parsed = parseInt(newCount, 10);
+    if (isNaN(parsed) || parsed <= 0) {
+      showPopup("Please enter a valid question count (1 or more).", "error");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await updateDoc(doc(db, 'settings', 'event'), { questionsPerStudent: parsed });
+      await setDoc(doc(db, 'settings', 'branding'), { roundsText: `C++ DEBUGGING (${parsed} MISSIONS)` }, { merge: true });
+      setQuestionsPerStudent(parsed);
+      showPopup(`Saved random questions allocation to ${parsed} questions per student!`, 'success');
+    } catch (err) {
+      console.error(err);
+      showPopup("Failed to update question count.", "error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleStartEvent = async () => {
@@ -669,6 +704,7 @@ const AdminDashboard = () => {
       await updateDoc(doc(db, 'settings', 'event'), { 
         status: 'active', 
         durationMinutes: mins, 
+        questionsPerStudent: parseInt(questionsPerStudent, 10) || 2,
         startTime: now,
         endTime: endTime.toISOString(),
         roundId: now
@@ -1072,13 +1108,23 @@ const AdminDashboard = () => {
           <div className="glass-panel" style={{ padding: '2rem' }}>
             <h2 className="glow-text-cyan" style={{ marginBottom: '1.5rem' }}>{editingQuestionId ? 'EDIT QUESTION' : 'ADD NEW QUESTION'}</h2>
             <form onSubmit={handleAddQuestion} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <div style={{ flex: 2 }}><label>TITLE</label><input type="text" name="title" className="input-field" value={formData.title} onChange={handleQuestionChange} required /></div>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 2, minWidth: '220px' }}>
+                  <label>TITLE</label>
+                  <input type="text" name="title" className="input-field" value={formData.title} onChange={handleQuestionChange} required />
+                </div>
+                <div style={{ flex: 1, minWidth: '140px' }}>
                   <label>MISSION STAGE (LANGUAGE)</label>
                   <select name="phase" className="input-field" value={formData.phase} onChange={handleQuestionChange} required>
-                    <option value="c">ROUND 1: C LANGUAGE</option>
-                    <option value="cpp">ROUND 2: C++ LANGUAGE</option>
+                    <option value="cpp">C++ LANGUAGE</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1, minWidth: '140px' }}>
+                  <label>CATEGORY (DIFFICULTY)</label>
+                  <select name="category" className="input-field" value={formData.category || 'Easy'} onChange={handleQuestionChange} required>
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
                   </select>
                 </div>
               </div>
@@ -1086,20 +1132,20 @@ const AdminDashboard = () => {
               
               <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '1rem', marginTop: '1rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {['c', 'cpp'].map(lang => (
+                  {['cpp'].map(lang => (
                     <button key={lang} type="button" onClick={() => setVariantTab(lang)}
                       style={{ padding: '5px 15px', background: variantTab === lang ? 'var(--accent-cyan)' : 'transparent', color: variantTab === lang ? 'var(--bg-deep-navy)' : 'var(--text-primary)', border: '1px solid var(--accent-cyan)', cursor: 'pointer', textTransform: 'uppercase' }}>
-                      {lang === 'c' ? 'ROUND 1 (C)' : 'ROUND 2 (C++)'}
+                      C++ CODE VARIANT
                     </button>
                   ))}
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                  <div style={{ flex: 1 }}><label>BUGGY CODE (INITIAL)</label><textarea name="initialCode" className="input-field" value={formData.variants[variantTab].initialCode} onChange={(e) => handleVariantChange(e, variantTab)} rows="6" required wrap="off" style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'pre', overflow: 'scroll', overflowX: 'scroll', overflowY: 'scroll' }} /></div>
-                  <div style={{ flex: 1 }}><label>CORRECT CODE (For Logic)</label><textarea name="correctCode" className="input-field" value={formData.variants[variantTab].correctCode} onChange={(e) => handleVariantChange(e, variantTab)} rows="6" required wrap="off" style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'pre', overflow: 'scroll', overflowX: 'scroll', overflowY: 'scroll' }} /></div>
+                  <div style={{ flex: 1 }}><label>BUGGY CODE (INITIAL)</label><textarea name="initialCode" className="input-field" value={formData.variants[variantTab]?.initialCode || ''} onChange={(e) => handleVariantChange(e, variantTab)} rows="6" required wrap="off" style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'pre', overflow: 'scroll', overflowX: 'scroll', overflowY: 'scroll' }} /></div>
+                  <div style={{ flex: 1 }}><label>CORRECT CODE (For Logic)</label><textarea name="correctCode" className="input-field" value={formData.variants[variantTab]?.correctCode || ''} onChange={(e) => handleVariantChange(e, variantTab)} rows="6" required wrap="off" style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'pre', overflow: 'scroll', overflowX: 'scroll', overflowY: 'scroll' }} /></div>
                 </div>
                 <div style={{ marginTop: '1rem' }}>
                   <label>ERROR LINES (Comma-separated, use "|" for alternative fix lines e.g. 2, 5|14, 20)</label>
-                  <input type="text" name="errorLines" className="input-field" value={formData.variants[variantTab].errorLines} onChange={(e) => handleVariantChange(e, variantTab)} required placeholder="e.g. 2, 5|14, 20" />
+                  <input type="text" name="errorLines" className="input-field" value={formData.variants[variantTab]?.errorLines || ''} onChange={(e) => handleVariantChange(e, variantTab)} required placeholder="e.g. 2, 5|14, 20" />
                 </div>
               </div>
 
@@ -1110,7 +1156,7 @@ const AdminDashboard = () => {
                 {editingQuestionId && (
                   <button type="button" className="btn-secondary" onClick={() => {
                     setEditingQuestionId(null);
-                    setFormData({ title: '', description: '', expectedOutput: '', points: 100, phase: 'c', variants: { c: { initialCode: '', correctCode: '', errorLines: '' }, cpp: { initialCode: '', correctCode: '', errorLines: '' } } });
+                    setFormData({ title: '', description: '', expectedOutput: '', points: 100, phase: 'cpp', category: 'Easy', variants: { c: { initialCode: '', correctCode: '', errorLines: '' }, cpp: { initialCode: '', correctCode: '', errorLines: '' } } });
                   }}>CANCEL</button>
                 )}
               </div>
@@ -1123,7 +1169,11 @@ const AdminDashboard = () => {
                   QUESTION BANK ({questionsList.length} TOTAL)
                 </h2>
                 <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                  Round 1 (C): <strong style={{ color: 'var(--accent-cyan)' }}>{questionsList.filter(q => q.phase === 'c').length}</strong> | Round 2 (C++): <strong style={{ color: 'var(--accent-magenta)' }}>{questionsList.filter(q => q.phase === 'cpp').length}</strong> | Random Allocation: <strong style={{ color: '#10B981' }}>2 per student (1 C + 1 C++)</strong>
+                  Total: <strong style={{ color: 'var(--accent-cyan)' }}>{questionsList.length}</strong> | 
+                  Easy: <strong style={{ color: '#10B981' }}>{questionsList.filter(q => (q.category || 'Easy') === 'Easy').length}</strong> | 
+                  Medium: <strong style={{ color: '#F59E0B' }}>{questionsList.filter(q => q.category === 'Medium').length}</strong> | 
+                  Hard: <strong style={{ color: '#FF003C' }}>{questionsList.filter(q => q.category === 'Hard').length}</strong> | 
+                  Random Assignment: <strong style={{ color: '#00F0FF' }}>{questionsPerStudent} per student</strong>
                 </p>
               </div>
 
@@ -1157,24 +1207,198 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              {questionsList.map(q => (
-                <div key={q.id} style={{ padding: '1rem', border: '1px solid var(--border-subtle)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{q.title}</h4>
-                    <span style={{ fontSize: '0.8rem', padding: '2px 8px', borderRadius: '12px', background: 'var(--bg-deep-navy)', border: `1px solid ${q.phase === 'c' ? 'var(--accent-cyan)' : 'var(--accent-magenta)'}`, color: q.phase === 'c' ? 'var(--accent-cyan)' : 'var(--accent-magenta)', textTransform: 'uppercase' }}>
-                      {q.phase === 'c' ? 'Round 1 (C)' : 'Round 2 (C++)'}
-                    </span>
-                    <span style={{ marginLeft: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{q.points || 100} PTS</span>
+            {/* Question Search & Number Filter Bar */}
+            {(() => {
+              const filteredQuestionsList = questionsList.filter(q => {
+                const qCat = q.category || 'Easy';
+                if (questionCategoryFilter !== 'ALL' && qCat.toLowerCase() !== questionCategoryFilter.toLowerCase()) {
+                  return false;
+                }
+
+                if (!questionSearchQuery.trim()) return true;
+                const qLower = questionSearchQuery.toLowerCase().trim();
+                
+                // Range check e.g. "1-20", "21-40"
+                if (/^\d+\s*-\s*\d+$/.test(qLower)) {
+                  const [min, max] = qLower.split('-').map(n => parseInt(n.trim()));
+                  const titleMatch = (q.title || '').match(/Question\s+(\d+)/i);
+                  if (titleMatch) {
+                    const qNum = parseInt(titleMatch[1]);
+                    return qNum >= min && qNum <= max;
+                  }
+                }
+                
+                const titleLower = (q.title || '').toLowerCase();
+                const descLower = (q.description || '').toLowerCase();
+                
+                // Match single number e.g. "25", "69", "Question 69"
+                const numOnly = qLower.replace(/[^0-9]/g, '');
+                if (numOnly && (titleLower.includes(`question ${numOnly}:`) || titleLower.includes(`q${numOnly}:`) || titleLower.startsWith(`question ${numOnly} `))) {
+                  return true;
+                }
+                
+                return titleLower.includes(qLower) || descLower.includes(qLower);
+              });
+
+              return (
+                <>
+                  <div style={{ background: 'var(--bg-deep-navy)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ flex: '1 1 320px', position: 'relative' }}>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="🔍 Search by Question Number (e.g. 25, 69, 82) or Title / Topic..."
+                          value={questionSearchQuery}
+                          onChange={e => setQuestionSearchQuery(e.target.value)}
+                          style={{ paddingLeft: '2.5rem', width: '100%' }}
+                        />
+                        <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                      </div>
+
+                      {/* Quick Question Number Jump Input */}
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <input
+                          type="number"
+                          min="1"
+                          max="194"
+                          placeholder="Q #"
+                          className="input-field"
+                          style={{ width: '80px', textAlign: 'center' }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.target.value) {
+                              setQuestionSearchQuery(`Question ${e.target.value}`);
+                            }
+                          }}
+                          id="quickQNumInput"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = document.getElementById('quickQNumInput')?.value;
+                            if (val) setQuestionSearchQuery(`Question ${val}`);
+                          }}
+                          className="btn-secondary"
+                          style={{ padding: '8px 14px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)' }}
+                        >
+                          <Search size={15} /> SEARCH Q#
+                        </button>
+                      </div>
+
+                      {questionSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuestionSearchQuery('');
+                            const el = document.getElementById('quickQNumInput');
+                            if (el) el.value = '';
+                          }}
+                          className="btn-secondary"
+                          style={{ padding: '8px 14px', fontSize: '0.85rem' }}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Category Filter Tabs & Quick Jump Range Tags */}
+                    <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem', alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.8rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Category:</span>
+                      {[
+                        { label: 'ALL', count: questionsList.length, color: '#00f0ff' },
+                        { label: 'Easy', count: questionsList.filter(q => (q.category || 'Easy') === 'Easy').length, color: '#10B981' },
+                        { label: 'Medium', count: questionsList.filter(q => q.category === 'Medium').length, color: '#F59E0B' },
+                        { label: 'Hard', count: questionsList.filter(q => q.category === 'Hard').length, color: '#FF003C' }
+                      ].map(cat => (
+                        <button
+                          key={cat.label}
+                          type="button"
+                          onClick={() => setQuestionCategoryFilter(cat.label)}
+                          style={{
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            border: `1px solid ${questionCategoryFilter === cat.label ? cat.color : 'var(--border-subtle)'}`,
+                            background: questionCategoryFilter === cat.label ? `${cat.color}22` : 'rgba(255,255,255,0.05)',
+                            color: questionCategoryFilter === cat.label ? cat.color : 'var(--text-secondary)',
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          {cat.label} ({cat.count})
+                        </button>
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Quick Filter:</span>
+                      {[
+                        { label: 'All Ranges', query: '' },
+                        { label: 'Q1 – Q50', query: '1-50' },
+                        { label: 'Q51 – Q100', query: '51-100' },
+                        { label: 'Q101 – Q150', query: '101-150' },
+                        { label: 'Q151 – Q194', query: '151-194' }
+                      ].map(tag => (
+                        <button
+                          key={tag.label}
+                          type="button"
+                          onClick={() => setQuestionSearchQuery(tag.query)}
+                          style={{
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            border: '1px solid var(--border-subtle)',
+                            background: questionSearchQuery === tag.query ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)',
+                            color: questionSearchQuery === tag.query ? '#000000' : 'var(--text-secondary)',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          {tag.label}
+                        </button>
+                      ))}
+
+                      <div style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--accent-cyan)', fontWeight: 'bold' }}>
+                        Showing {filteredQuestionsList.length} of {questionsList.length} Questions
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={() => handleEditQuestion(q)} className="btn-secondary" style={{ padding: '5px 10px', fontSize: '0.8rem', color: 'var(--accent-cyan)', border: '1px solid var(--accent-cyan)' }}><Edit size={16} /></button>
-                    <button onClick={async () => { if(window.confirm('Delete question?')) await deleteDoc(doc(db, 'questions', q.id)) }} className="btn-secondary" style={{ padding: '5px 10px', fontSize: '0.8rem', color: 'var(--accent-magenta)', border: '1px solid var(--accent-magenta)' }}><Trash2 size={16} /></button>
+
+                  <div style={{ display: 'grid', gap: '1rem' }}>
+                    {filteredQuestionsList.map(q => {
+                      const cat = q.category || 'Easy';
+                      const badgeColor = cat === 'Hard' ? '#FF003C' : cat === 'Medium' ? '#F59E0B' : '#10B981';
+                      const badgeBg = cat === 'Hard' ? 'rgba(255, 0, 60, 0.15)' : cat === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)';
+                      return (
+                        <div key={q.id} style={{ padding: '1rem', border: '1px solid var(--border-subtle)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{q.title}</h4>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px', background: 'var(--bg-deep-navy)', border: '1px solid var(--accent-magenta)', color: 'var(--accent-magenta)', textTransform: 'uppercase' }}>
+                                C++ MISSION
+                              </span>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px', background: badgeBg, border: `1px solid ${badgeColor}`, color: badgeColor, textTransform: 'uppercase' }}>
+                                {cat}
+                              </span>
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{q.points || 100} PTS</span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button onClick={() => handleEditQuestion(q)} className="btn-secondary" style={{ padding: '5px 10px', fontSize: '0.8rem', color: 'var(--accent-cyan)', border: '1px solid var(--accent-cyan)' }}><Edit size={16} /></button>
+                            <button onClick={async () => { if(window.confirm('Delete question?')) await deleteDoc(doc(db, 'questions', q.id)) }} className="btn-secondary" style={{ padding: '5px 10px', fontSize: '0.8rem', color: 'var(--accent-magenta)', border: '1px solid var(--accent-magenta)' }}><Trash2 size={16} /></button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {filteredQuestionsList.length === 0 && (
+                      <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>
+                        No questions matching "{questionSearchQuery}".
+                      </p>
+                    )}
                   </div>
-                </div>
-              ))}
-              {questionsList.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No questions added yet. Use the single add form above or Bulk Import JSON to upload 150 questions.</p>}
-            </div>
+                </>
+              );
+            })()}
           </div>
         );
 
@@ -1185,13 +1409,26 @@ const AdminDashboard = () => {
               <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '500px' }}>
                 <div><label>PARTICIPANT NAME</label><input type="text" className="input-field" value={userForm.name} onChange={(e) => setUserForm({ ...userForm, name: e.target.value })} required /></div>
                 <div><label>TEAM IDENTIFIER (LOT #)</label><input type="text" className="input-field" value={userForm.rollNo} onChange={(e) => setUserForm({ ...userForm, rollNo: e.target.value })} required /></div>
+                <div>
+                  <label>CATEGORY (QUESTION DIFFICULTY)</label>
+                  <select
+                    className="input-field"
+                    value={userForm.category || 'Easy'}
+                    onChange={(e) => setUserForm({ ...userForm, category: e.target.value })}
+                    required
+                  >
+                    <option value="Easy">Easy (Gets Random Easy Questions)</option>
+                    <option value="Medium">Medium (Gets Random Medium Questions)</option>
+                    <option value="Hard">Hard (Gets Random Hard Questions)</option>
+                  </select>
+                </div>
                 
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                   <button type="submit" className="btn-primary">{editingUserId ? 'UPDATE USER' : 'ADD USER'}</button>
                   {editingUserId && (
                     <button type="button" className="btn-secondary" onClick={() => {
                       setEditingUserId(null);
-                      setUserForm({ name: '', rollNo: '' });
+                      setUserForm({ name: '', rollNo: '', category: 'Easy' });
                     }}>CANCEL</button>
                   )}
                 </div>
@@ -1205,6 +1442,7 @@ const AdminDashboard = () => {
                     <tr style={{ borderBottom: '1px solid var(--accent-cyan)' }}>
                       <th style={{ padding: '1rem' }}>LOT #</th>
                       <th style={{ padding: '1rem' }}>NAME</th>
+                      <th style={{ padding: '1rem' }}>CATEGORY</th>
                       <th style={{ padding: '1rem' }}>LANGUAGE</th>
                       <th style={{ padding: '1rem' }}>PROGRESS</th>
                       <th style={{ padding: '1rem' }}>ACTION</th>
@@ -1212,7 +1450,9 @@ const AdminDashboard = () => {
                   </thead>
                   <tbody>
                     {liveUsers.map(u => {
-                      const cat = getStudentCategory(u.rollNo);
+                      const userCat = u.category || 'Easy';
+                      const badgeColor = userCat === 'Hard' ? '#FF003C' : userCat === 'Medium' ? '#F59E0B' : '#10B981';
+                      const badgeBg = userCat === 'Hard' ? 'rgba(255, 0, 60, 0.15)' : userCat === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)';
                       return (
                       <tr key={u.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                         <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1220,6 +1460,20 @@ const AdminDashboard = () => {
                           <span style={{ padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem', background: 'rgba(0, 240, 255, 0.15)', color: '#00f0ff', border: '1px solid #00f0ff' }}>UG</span>
                         </td>
                         <td style={{ padding: '1rem' }}>{u.name}</td>
+                        <td style={{ padding: '1rem' }}>
+                          <span style={{
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold',
+                            background: badgeBg,
+                            color: badgeColor,
+                            border: `1px solid ${badgeColor}`,
+                            textTransform: 'uppercase'
+                          }}>
+                            {userCat}
+                          </span>
+                        </td>
                         <td style={{ padding: '1rem', textTransform: 'uppercase' }}>{u.selectedLanguage || 'PENDING'}</td>
                         <td style={{ padding: '1rem' }}>
                             {(u.cumulativeClearedErrors || 0) + (u.clearedErrors || 0)} / {(u.cumulativeTotalErrors || 0) + (u.totalErrors || 0)}
@@ -1245,6 +1499,36 @@ const AdminDashboard = () => {
               STATUS: <span className={eventStatus === 'active' ? 'glow-text-cyan' : 'glow-text-magenta'}>{eventStatus.toUpperCase()}</span>
               {timeLeft && <span style={{ marginLeft: '2rem', color: 'var(--accent-pink)' }}>TIME REMAINING: {timeLeft}</span>}
             </h3>
+
+            {/* Random Question Count Setting */}
+            <div style={{ background: 'rgba(0, 240, 255, 0.05)', border: '1px solid var(--accent-cyan)', borderRadius: '8px', padding: '1.2rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h4 className="glow-text-cyan" style={{ margin: '0 0 4px 0', fontSize: '1rem' }}>🎯 RANDOM QUESTIONS PER STUDENT (CATEGORY-WISE)</h4>
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  Each student will receive this exact number of randomly generated questions from their assigned category (Easy / Medium / Hard).
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  className="input-field"
+                  value={questionsPerStudent}
+                  onChange={(e) => setQuestionsPerStudent(e.target.value)}
+                  style={{ width: '90px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--accent-cyan)' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleUpdateQuestionsPerStudent(questionsPerStudent)}
+                  className="btn-primary"
+                  style={{ padding: '10px 18px', fontSize: '0.85rem' }}
+                >
+                  SAVE QUESTION COUNT
+                </button>
+              </div>
+            </div>
+
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginBottom: '2rem', flexWrap: 'wrap' }}>
               <div><label>DURATION (MINUTES)</label><input type="number" className="input-field" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} /></div>
               <button onClick={handleStartEvent} disabled={eventStatus === 'active'} className="btn-primary">START EVENT</button>
@@ -1263,17 +1547,12 @@ const AdminDashboard = () => {
       case 'languages':
         return (
           <div className="glass-panel" style={{ padding: '2rem' }}>
-            <h2 className="glow-text-cyan" style={{ marginBottom: '1.5rem' }}>SEQUENTIAL LANGUAGE & COMPILER CONFIGURATION</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>The debugging competition consists of 2 rounds: <strong>Round 1: C Language</strong> &nbsp;➔&nbsp; <strong>Round 2: C++ Language</strong>. Configure the Online Compiler API below.</p>
+            <h2 className="glow-text-cyan" style={{ marginBottom: '1.5rem' }}>C++ LANGUAGE & COMPILER CONFIGURATION</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>The debugging competition consists of <strong>C++ Language</strong> (5 questions per participant). Configure the Online Compiler API below.</p>
             
             <form onSubmit={handleSavePhaseLanguages} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px', marginBottom: '3rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '2.5rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'center' }}>
-                <label style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>ROUND 1 LANGUAGE</label>
-                <div style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>C Language (gcc-15)</div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'center' }}>
-                <label style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>ROUND 2 LANGUAGE</label>
+                <label style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>ACTIVE LANGUAGE</label>
                 <div style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>C++ Language (g++-15)</div>
               </div>
 
@@ -1287,61 +1566,63 @@ const AdminDashboard = () => {
               </div>
             </form>
 
-            <h3 className="glow-text-cyan" style={{ marginBottom: '1rem' }}>ROUND COMPILER AVAILABILITY</h3>
+            <h3 className="glow-text-cyan" style={{ marginBottom: '1rem' }}>COMPILER AVAILABILITY</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {[
-                { id: 'c', name: 'Round 1: C Language' },
-                { id: 'cpp', name: 'Round 2: C++ Language' }
+                { id: 'cpp', name: 'C++ Language (g++-15)' }
               ].map(({ id: lang, name }) => (
                 <div key={lang} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <button onClick={() => handleLanguageToggle(lang)} className={langSettings[lang] ? 'btn-primary' : 'btn-secondary'} style={{ width: '150px' }}>
-                    {langSettings[lang] ? 'ENABLED' : 'DISABLED'}
+                  <button onClick={() => handleLanguageToggle(lang)} className={langSettings[lang] !== false ? 'btn-primary' : 'btn-secondary'} style={{ width: '150px' }}>
+                    {langSettings[lang] !== false ? 'ENABLED' : 'DISABLED'}
                   </button>
                   <span style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>{name}</span>
                 </div>
               ))}
             </div>
 
-            <h3 className="glow-text-cyan" style={{ marginTop: '3rem', marginBottom: '1rem' }}>JAVA (JDOODLE) API KEY MANAGEMENT & LIVE STATUS</h3>
+            <h3 className="glow-text-cyan" style={{ marginTop: '3rem', marginBottom: '1rem' }}>ONLINECOMPILER.IO API KEY MANAGEMENT & LIVE FAILOVER POOL</h3>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-              Java compilation uses the JDoodle execution engine with automatic key rotation and failover across the entire pool.
+              C & C++ compilation uses the OnlineCompiler.io execution engine with automatic key rotation and instant failover across the entire key pool whenever a key finishes its quota.
             </p>
 
             <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep-navy)', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid var(--accent-cyan)', marginBottom: '1.5rem', boxShadow: '0 0 15px rgba(0, 240, 255, 0.1)' }}>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Total Failover Pool</span>
                 <span style={{ color: 'var(--accent-cyan)', fontWeight: 'bold', fontSize: '1.4rem' }}>
-                  {jdoodleStatusList.totalCount || jdoodleStatusList.all?.length || 0} Keys
+                  {compilerStatusList.totalCount || compilerStatusList.all?.length || 0} Keys
                 </span>
               </div>
               <div style={{ height: '30px', width: '1px', background: 'var(--border-subtle)' }}></div>
               <div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Active Available</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Active & Ready</span>
                 <span style={{ color: '#00f59b', fontWeight: 'bold', fontSize: '1.4rem' }}>
-                  {jdoodleStatusList.nonFinished.length} Keys
+                  {compilerStatusList.active.length} Keys
                 </span>
               </div>
               <div style={{ height: '30px', width: '1px', background: 'var(--border-subtle)' }}></div>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Exhausted Today</span>
                 <span style={{ color: 'var(--accent-magenta)', fontWeight: 'bold', fontSize: '1.4rem' }}>
-                  {jdoodleStatusList.finished.length} Keys
+                  {compilerStatusList.exhausted.length} Keys
                 </span>
               </div>
             </div>
 
-            <form onSubmit={handleAddJavaKey} style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--bg-deep-navy)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', marginBottom: '2rem' }}>
-              <div style={{ flex: '1 1 220px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>NEW JDOODLE CLIENT ID</label>
-                <input type="text" className="input-field" value={newJavaKey.clientId} onChange={e => setNewJavaKey({ ...newJavaKey, clientId: e.target.value })} placeholder="e.g. 4a9a6038b2a7e..." required />
+            <form onSubmit={handleAddCompilerKey} style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--bg-deep-navy)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', marginBottom: '2rem' }}>
+              <div style={{ flex: '1 1 320px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>NEW ONLINECOMPILER.IO API KEY</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  value={newCompilerKey}
+                  onChange={e => setNewCompilerKey(e.target.value)}
+                  placeholder="e.g. ccb79ad09699924cb025d0ba0b6690ed..."
+                  required
+                />
               </div>
-              <div style={{ flex: '1 1 220px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>NEW JDOODLE CLIENT SECRET</label>
-                <input type="text" className="input-field" value={newJavaKey.clientSecret} onChange={e => setNewJavaKey({ ...newJavaKey, clientSecret: e.target.value })} placeholder="e.g. af69762f1a318..." required />
-              </div>
-              <button type="submit" className="btn-primary" style={{ padding: '0.7rem 1.5rem' }}>ADD JAVA API KEY</button>
-              <button type="button" onClick={() => fetchJdoodleStatus()} disabled={isCheckingJdoodle} className="btn-secondary" style={{ padding: '0.7rem 1.5rem', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)' }}>
-                {isCheckingJdoodle ? 'CHECKING CREDITS...' : 'REFRESH STATUS'}
+              <button type="submit" className="btn-primary" style={{ padding: '0.7rem 1.5rem' }}>ADD COMPILER API KEY</button>
+              <button type="button" onClick={() => fetchCompilerStatus()} disabled={isCheckingCompiler} className="btn-secondary" style={{ padding: '0.7rem 1.5rem', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)' }}>
+                {isCheckingCompiler ? 'TESTING KEYS...' : 'REFRESH & TEST STATUS'}
               </button>
             </form>
 
@@ -1349,30 +1630,30 @@ const AdminDashboard = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.8rem', marginBottom: '1rem' }}>
                 <h4 style={{ color: 'var(--accent-cyan)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent-cyan)' }}></span>
-                  COMPLETE API KEY POOL ({jdoodleStatusList.totalCount || jdoodleStatusList.all?.length || 0} REGISTERED KEYS)
+                  COMPLETE ONLINECOMPILER API KEY POOL ({compilerStatusList.totalCount || compilerStatusList.all?.length || 0} REGISTERED KEYS)
                 </h4>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>All built-in + custom keys available in failover chain</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>All built-in + custom keys available in automatic failover chain</span>
               </div>
-              {(!jdoodleStatusList.all || jdoodleStatusList.all.length === 0) ? (
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>Loading registered keys from failover pool...</p>
+              {(!compilerStatusList.all || compilerStatusList.all.length === 0) ? (
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>Loading registered compiler keys from pool...</p>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.8rem', maxHeight: '380px', overflowY: 'auto' }}>
-                  {jdoodleStatusList.all.map((item, idx) => (
-                    <div key={idx} style={{ background: '#0a0e1a', padding: '0.8rem 1rem', borderRadius: '6px', border: item.status === 'finished' ? '1px solid rgba(255, 0, 85, 0.3)' : '1px solid rgba(0, 245, 155, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '0.8rem', maxHeight: '380px', overflowY: 'auto' }}>
+                  {compilerStatusList.all.map((item, idx) => (
+                    <div key={idx} style={{ background: '#0a0e1a', padding: '0.8rem 1rem', borderRadius: '6px', border: item.status === 'exhausted' ? '1px solid rgba(255, 0, 85, 0.3)' : '1px solid rgba(0, 245, 155, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
-                          <strong>#{idx + 1}</strong> ID: {item.clientId ? `${item.clientId.slice(0, 8)}...${item.clientId.slice(-4)}` : 'N/A'}
+                          <strong>#{idx + 1}</strong> KEY: {item.apiKey ? `${item.apiKey.slice(0, 10)}...${item.apiKey.slice(-6)}` : 'N/A'}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: item.status === 'finished' ? 'var(--accent-magenta)' : '#00f59b', marginTop: '4px' }}>
-                          {item.status === 'finished' ? (item.errorReason || 'EXHAUSTED / LIMIT REACHED') : `ACTIVE | Credits Used Today: ${item.used || 0}/22`}
+                        <div style={{ fontSize: '0.75rem', color: item.status === 'exhausted' ? 'var(--accent-magenta)' : '#00f59b', marginTop: '4px' }}>
+                          {item.status === 'exhausted' ? (item.errorReason || 'LIMIT FINISHED / EXHAUSTED') : `ACTIVE & READY | Successful Runs: ${item.used || 0}`}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: item.status === 'finished' ? 'rgba(255, 0, 85, 0.15)' : 'rgba(0, 245, 155, 0.15)', color: item.status === 'finished' ? 'var(--accent-magenta)' : '#00f59b' }}>
-                          {item.status === 'finished' ? 'FINISHED' : 'ACTIVE'}
+                        <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: item.status === 'exhausted' ? 'rgba(255, 0, 85, 0.15)' : 'rgba(0, 245, 155, 0.15)', color: item.status === 'exhausted' ? 'var(--accent-magenta)' : '#00f59b' }}>
+                          {item.status === 'exhausted' ? 'EXHAUSTED' : 'ACTIVE'}
                         </span>
-                        {jdoodleKeys.some(k => k.clientId === item.clientId) && (
-                          <button onClick={() => handleDeleteJavaKey(item.clientId)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-magenta)', cursor: 'pointer' }} title="Remove custom key"><Trash2 size={16} /></button>
+                        {onlineCompilerKeys.includes(item.apiKey) && (
+                          <button onClick={() => handleDeleteCompilerKey(item.apiKey)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-magenta)', cursor: 'pointer' }} title="Remove custom key"><Trash2 size={16} /></button>
                         )}
                       </div>
                     </div>
@@ -1382,31 +1663,31 @@ const AdminDashboard = () => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-              {/* Non-Finished APIs */}
+              {/* Active & Ready APIs */}
               <div style={{ background: 'rgba(0, 245, 155, 0.04)', border: '1px solid rgba(0, 245, 155, 0.3)', borderRadius: '8px', padding: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0, 245, 155, 0.2)', paddingBottom: '0.8rem', marginBottom: '1rem' }}>
                   <h4 style={{ color: '#00f59b', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: '#00f59b' }}></span>
-                    NON-FINISHED JAVA APIs (ACTIVE & AVAILABLE)
+                    ACTIVE ONLINECOMPILER KEYS (READY)
                   </h4>
                   <span style={{ fontWeight: 'bold', background: 'rgba(0, 245, 155, 0.15)', color: '#00f59b', padding: '2px 10px', borderRadius: '12px', fontSize: '0.85rem' }}>
-                    {jdoodleStatusList.nonFinished.length} Keys Active
+                    {compilerStatusList.active.length} Keys Active
                   </span>
                 </div>
-                {jdoodleStatusList.nonFinished.length === 0 ? (
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No active Java API keys verified right now. Click Refresh Status.</p>
+                {compilerStatusList.active.length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No active keys verified right now. Click Refresh & Test Status.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '350px', overflowY: 'auto' }}>
-                    {jdoodleStatusList.nonFinished.map((item, idx) => (
+                    {compilerStatusList.active.map((item, idx) => (
                       <div key={idx} style={{ background: 'var(--bg-deep-navy)', padding: '0.8rem 1rem', borderRadius: '6px', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-primary)' }}>ID: {item.clientId.slice(0, 10)}...{item.clientId.slice(-4)}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#00f59b', marginTop: '4px' }}>Credits Used Today: <strong>{item.used} / 22</strong></div>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-primary)' }}>KEY: {item.apiKey.slice(0, 12)}...{item.apiKey.slice(-6)}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#00f59b', marginTop: '4px' }}>Status: <strong>Active & Verified</strong> (Runs: {item.used || 0})</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '4px', background: 'rgba(0, 245, 155, 0.1)', color: '#00f59b', border: '1px solid rgba(0, 245, 155, 0.3)' }}>NON-FINISHED</span>
-                          {jdoodleKeys.some(k => k.clientId === item.clientId) && (
-                            <button onClick={() => handleDeleteJavaKey(item.clientId)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-magenta)', cursor: 'pointer' }} title="Remove custom key"><Trash2 size={16} /></button>
+                          <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '4px', background: 'rgba(0, 245, 155, 0.1)', color: '#00f59b', border: '1px solid rgba(0, 245, 155, 0.3)' }}>ACTIVE</span>
+                          {onlineCompilerKeys.includes(item.apiKey) && (
+                            <button onClick={() => handleDeleteCompilerKey(item.apiKey)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-magenta)', cursor: 'pointer' }} title="Remove custom key"><Trash2 size={16} /></button>
                           )}
                         </div>
                       </div>
@@ -1415,31 +1696,31 @@ const AdminDashboard = () => {
                 )}
               </div>
 
-              {/* Finished APIs */}
+              {/* Exhausted / Limit Finished APIs */}
               <div style={{ background: 'rgba(255, 0, 85, 0.04)', border: '1px solid rgba(255, 0, 85, 0.3)', borderRadius: '8px', padding: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 0, 85, 0.2)', paddingBottom: '0.8rem', marginBottom: '1rem' }}>
                   <h4 style={{ color: 'var(--accent-magenta)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent-magenta)' }}></span>
-                    FINISHED JAVA APIs (EXHAUSTED / LIMIT EXCEEDED)
+                    EXHAUSTED / LIMIT FINISHED KEYS
                   </h4>
                   <span style={{ fontWeight: 'bold', background: 'rgba(255, 0, 85, 0.15)', color: 'var(--accent-magenta)', padding: '2px 10px', borderRadius: '12px', fontSize: '0.85rem' }}>
-                    {jdoodleStatusList.finished.length} Keys Exhausted
+                    {compilerStatusList.exhausted.length} Keys Finished
                   </span>
                 </div>
-                {jdoodleStatusList.finished.length === 0 ? (
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>All Java API keys have available quota right now (0 finished).</p>
+                {compilerStatusList.exhausted.length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>All OnlineCompiler keys have quota available right now (0 exhausted).</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '350px', overflowY: 'auto' }}>
-                    {jdoodleStatusList.finished.map((item, idx) => (
+                    {compilerStatusList.exhausted.map((item, idx) => (
                       <div key={idx} style={{ background: 'var(--bg-deep-navy)', padding: '0.8rem 1rem', borderRadius: '6px', border: '1px solid rgba(255, 0, 85, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-primary)' }}>ID: {item.clientId.slice(0, 10)}...{item.clientId.slice(-4)}</div>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-primary)' }}>KEY: {item.apiKey.slice(0, 12)}...{item.apiKey.slice(-6)}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--accent-magenta)', marginTop: '4px' }}>Status: <strong>{item.errorReason || 'Quota limit reached (Finished)'}</strong></div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '4px', background: 'rgba(255, 0, 85, 0.1)', color: 'var(--accent-magenta)', border: '1px solid rgba(255, 0, 85, 0.3)' }}>FINISHED</span>
-                          {jdoodleKeys.some(k => k.clientId === item.clientId) && (
-                            <button onClick={() => handleDeleteJavaKey(item.clientId)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-magenta)', cursor: 'pointer' }} title="Remove custom key"><Trash2 size={16} /></button>
+                          <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '4px', background: 'rgba(255, 0, 85, 0.1)', color: 'var(--accent-magenta)', border: '1px solid rgba(255, 0, 85, 0.3)' }}>EXHAUSTED</span>
+                          {onlineCompilerKeys.includes(item.apiKey) && (
+                            <button onClick={() => handleDeleteCompilerKey(item.apiKey)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-magenta)', cursor: 'pointer' }} title="Remove custom key"><Trash2 size={16} /></button>
                           )}
                         </div>
                       </div>
@@ -1451,27 +1732,526 @@ const AdminDashboard = () => {
           </div>
         );
 
+      case 'points': {
+        const parseQuestionErrors = (q) => {
+          const v = q?.variants?.cpp || q?.variants?.c || {};
+          const errStr = String(v.errorLines || q.errorLines || '');
+          const groups = errStr
+            .split(',')
+            .map(g => g.split('|').map(n => parseInt(n.trim())).filter(n => !isNaN(n)))
+            .filter(g => g.length > 0);
+          const totalErr = Math.max(1, groups.length || (v.errorLinesArray?.length || 1));
+          const basePts = parseInt(q.points) || 100;
+          const ptsPerErr = +(basePts / totalErr).toFixed(2);
+          return {
+            totalErrors: totalErr,
+            pointsPerError: ptsPerErr,
+            errorLinesStr: errStr || 'Line specified in source',
+            basePoints: basePts
+          };
+        };
+
+        const filteredStudents = liveUsers.filter(u => {
+          const q = pointSearchQuery.toLowerCase();
+          return (
+            (u.name || '').toLowerCase().includes(q) ||
+            (u.regNo || '').toLowerCase().includes(q) ||
+            (u.department || '').toLowerCase().includes(q)
+          );
+        });
+
+        const filteredQuestions = questionsList.filter(q => {
+          const query = pointSearchQuery.toLowerCase();
+          const matchesSearch = !query || 
+            (q.title || '').toLowerCase().includes(query) ||
+            (q.description || '').toLowerCase().includes(query) ||
+            (q.category || '').toLowerCase().includes(query);
+          const meta = parseQuestionErrors(q);
+          const cat = q.category || (meta.totalErrors === 1 ? 'Easy' : meta.totalErrors === 2 ? 'Medium' : 'Hard');
+          const matchesCategory = pointCategoryFilter === 'ALL' || cat === pointCategoryFilter;
+          return matchesSearch && matchesCategory;
+        });
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Header & Stats Banner */}
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.2rem' }}>
+                <div>
+                  <h2 className="glow-text-cyan" style={{ margin: 0, fontSize: '1.6rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Calculator size={26} style={{ color: 'var(--accent-cyan)' }} />
+                    POINT DISTRIBUTION & ERROR SPLIT ANALYTICS
+                  </h2>
+                  <p style={{ color: 'var(--text-secondary)', margin: '6px 0 0 0', fontSize: '0.88rem' }}>
+                    Standard 100-point base score divided equally across question bugs (<strong>100 ÷ N errors = Points per fixed error</strong>). Live student tracking and question bank distribution.
+                  </p>
+                </div>
+                
+                {/* Switcher Between Live Students & Question Bank */}
+                <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--bg-deep-navy)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                  <button
+                    onClick={() => setPointSubTab('students')}
+                    style={{
+                      padding: '8px 16px',
+                      background: pointSubTab === 'students' ? 'var(--accent-cyan)' : 'transparent',
+                      color: pointSubTab === 'students' ? '#000000' : 'var(--text-secondary)',
+                      fontWeight: 'bold',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Users size={16} /> Live Student Error Split ({liveUsers.length})
+                  </button>
+                  <button
+                    onClick={() => setPointSubTab('bank')}
+                    style={{
+                      padding: '8px 16px',
+                      background: pointSubTab === 'bank' ? 'var(--accent-cyan)' : 'transparent',
+                      color: pointSubTab === 'bank' ? '#000000' : 'var(--text-secondary)',
+                      fontWeight: 'bold',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <FileText size={16} /> Question Bank Matrix ({questionsList.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Metric Quick Stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                <div style={{ background: 'var(--bg-deep-navy)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>BASE MISSION VALUE</div>
+                  <div style={{ fontSize: '1.4rem', color: 'var(--accent-cyan)', fontWeight: 'bold', marginTop: '4px' }}>100 Points</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Standard across all questions</div>
+                </div>
+
+                <div style={{ background: 'var(--bg-deep-navy)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(0, 245, 155, 0.3)' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#00f59b', textTransform: 'uppercase', letterSpacing: '1px' }}>SPLIT FORMULA RULE</div>
+                  <div style={{ fontSize: '1.4rem', color: '#00f59b', fontWeight: 'bold', marginTop: '4px' }}>100 ÷ N Errors</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>1 Err = 100 | 2 Err = 50 | 3 Err = 33.33</div>
+                </div>
+
+                <div style={{ background: 'var(--bg-deep-navy)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>ACTIVE STUDENTS</div>
+                  <div style={{ fontSize: '1.4rem', color: '#ffffff', fontWeight: 'bold', marginTop: '4px' }}>{liveUsers.length} Tracked</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Assigned category missions</div>
+                </div>
+
+                <div style={{ background: 'var(--bg-deep-navy)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>TOTAL QUESTION POOL</div>
+                  <div style={{ fontSize: '1.4rem', color: 'var(--accent-magenta)', fontWeight: 'bold', marginTop: '4px' }}>{questionsList.length} C++ Missions</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Easy (1 err) • Medium (2 err) • Hard (3 err)</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Search Bar & Category Tabs */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '280px', position: 'relative' }}>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder={pointSubTab === 'students' ? "Search students by Name, Reg No, or Department..." : "Search questions by Title, Question #, Category or Keyword..."}
+                  value={pointSearchQuery}
+                  onChange={e => setPointSearchQuery(e.target.value)}
+                  style={{ paddingLeft: '2.5rem' }}
+                />
+                <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              </div>
+
+              {pointSubTab === 'bank' && (
+                <div style={{ display: 'flex', gap: '6px', background: 'var(--bg-deep-navy)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                  {['ALL', 'Easy', 'Medium', 'Hard'].map(cat => {
+                    const count = cat === 'ALL'
+                      ? questionsList.length
+                      : questionsList.filter(q => (q.category || (parseQuestionErrors(q).totalErrors === 1 ? 'Easy' : parseQuestionErrors(q).totalErrors === 2 ? 'Medium' : 'Hard')) === cat).length;
+                    const isActive = pointCategoryFilter === cat;
+                    const catColor = cat === 'Easy' ? '#00f59b' : cat === 'Medium' ? '#f59e0b' : cat === 'Hard' ? '#ff003c' : 'var(--accent-cyan)';
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setPointCategoryFilter(cat)}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          border: isActive ? `1px solid ${catColor}` : '1px solid transparent',
+                          background: isActive ? (cat === 'ALL' ? 'var(--accent-cyan)' : cat === 'Easy' ? 'rgba(0, 245, 155, 0.2)' : cat === 'Medium' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255, 0, 60, 0.2)') : 'transparent',
+                          color: isActive ? (cat === 'ALL' ? '#000000' : catColor) : 'var(--text-secondary)',
+                          fontWeight: 'bold',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        {cat} <span style={{ opacity: 0.8, fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>({count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {pointSearchQuery && (
+                <button onClick={() => setPointSearchQuery('')} className="btn-secondary" style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* VIEW 1: LIVE STUDENTS POINT DISTRIBUTION BREAKDOWN */}
+            {pointSubTab === 'students' && (
+              <div className="glass-panel" style={{ padding: '1.5rem', overflowX: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.1rem' }}>
+                    👨‍🎓 Live Participant Error Clearance & Partial Point Earnings ({filteredStudents.length})
+                  </h3>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    Real-time monitoring of each student's error fixes & awarded score
+                  </span>
+                </div>
+
+                {filteredStudents.length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>No participants matching search criteria.</p>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--accent-cyan)', fontFamily: 'var(--font-heading)', fontSize: '0.78rem', letterSpacing: '1px' }}>
+                        <th style={{ padding: '12px 10px' }}>STUDENT INFO</th>
+                        <th style={{ padding: '12px 10px' }}>DEPT & CAT</th>
+                        <th style={{ padding: '12px 10px' }}>TOTAL SCORE</th>
+                        <th style={{ padding: '12px 10px' }}>COMPLETED MISSIONS (WITH ERROR SPLIT)</th>
+                        <th style={{ padding: '12px 10px' }}>LIVE WORKING MISSION</th>
+                        <th style={{ padding: '12px 10px', textAlign: 'center' }}>ACTION</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredStudents.map((u, idx) => {
+                        const subs = u.submissions || {};
+                        const subEntries = Object.entries(subs);
+                        const isWorking = u.selectedQuestionId && !u.isFinished;
+
+                        return (
+                          <tr key={u.id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: idx % 2 === 0 ? 'rgba(0,0,0,0.1)' : 'transparent' }}>
+                            <td style={{ padding: '12px 10px' }}>
+                              <div style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{u.name || 'Anonymous'}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>{u.regNo || 'No Reg #'}</div>
+                            </td>
+                            <td style={{ padding: '12px 10px' }}>
+                              <div style={{ color: 'var(--text-secondary)' }}>{u.department || 'N/A'}</div>
+                              {u.category ? (
+                                <span style={{
+                                  fontSize: '0.7rem',
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  fontWeight: 'bold',
+                                  textTransform: 'uppercase',
+                                  display: 'inline-block',
+                                  marginTop: '3px',
+                                  background: u.category === 'Easy' ? 'rgba(0, 245, 155, 0.15)' : u.category === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 0, 60, 0.15)',
+                                  color: u.category === 'Easy' ? '#00f59b' : u.category === 'Medium' ? '#f59e0b' : '#ff003c',
+                                  border: `1px solid ${u.category === 'Easy' ? 'rgba(0, 245, 155, 0.3)' : u.category === 'Medium' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 0, 60, 0.3)'}`
+                                }}>
+                                  {u.category}
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255, 0, 60, 0.1)', color: '#ff4d6d', border: '1px solid rgba(255, 0, 60, 0.3)' }}>
+                                  {u.degreeCategory || 'UG'}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px 10px' }}>
+                              <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#00f59b', fontFamily: 'var(--font-mono)' }}>
+                                {u.score || 0} PTS
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                {(u.completedQuestions || []).length} / {(u.assignedQuestions && u.assignedQuestions.length) ? u.assignedQuestions.length : questionsPerStudent} Completed
+                              </div>
+                              {u.tabSwitches > 0 && (
+                                <div style={{ fontSize: '0.7rem', color: '#ff4d6d', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                                  ⚠️ -{u.tabSwitches * 2} pts ({u.tabSwitches} tab {u.tabSwitches === 1 ? 'switch' : 'switches'})
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px 10px', maxWidth: '380px' }}>
+                              {subEntries.length === 0 ? (
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontStyle: 'italic' }}>No submissions yet</span>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  {subEntries.map(([qId, s], sIdx) => {
+                                    const totalErr = s.totalErrors || 1;
+                                    const clearedErr = s.clearedErrors !== undefined ? s.clearedErrors : (s.score === 100 ? totalErr : Math.round(s.score / (100 / totalErr)));
+                                    const ptsPerErr = s.pointsPerError || +(100 / totalErr).toFixed(1);
+                                    const isFull = s.score >= 100 || clearedErr === totalErr;
+
+                                    return (
+                                      <div key={sIdx} style={{ background: 'var(--bg-deep-navy)', padding: '6px 10px', borderRadius: '6px', border: isFull ? '1px solid rgba(0, 245, 155, 0.3)' : '1px solid rgba(255, 204, 0, 0.3)', fontSize: '0.78rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                          <strong style={{ color: 'var(--text-primary)' }}>{s.title || `Mission ${sIdx + 1}`}</strong>
+                                          <span style={{ fontWeight: 'bold', color: isFull ? '#00f59b' : '#ffcc00' }}>
+                                            +{s.score} PTS
+                                          </span>
+                                        </div>
+                                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.72rem', marginTop: '2px' }}>
+                                          Split: <strong>{clearedErr}/{totalErr} errors</strong> × {ptsPerErr} pts = <strong>{s.score} pts</strong>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px 10px' }}>
+                              {isWorking ? (
+                                <div style={{ background: 'rgba(0, 240, 255, 0.06)', border: '1px solid rgba(0, 240, 255, 0.3)', padding: '8px 10px', borderRadius: '6px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-cyan)', fontSize: '0.78rem', fontWeight: 'bold' }}>
+                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-cyan)', display: 'inline-block' }}></span>
+                                    CURRENTLY EDITING
+                                  </div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                                    Errors Fixed: <strong style={{ color: '#00f59b' }}>{u.clearedErrors || 0} / {u.totalErrors || 1}</strong>
+                                  </div>
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', marginTop: '2px' }}>
+                                    Est. Score: +{Math.min(100, Math.round((u.clearedErrors || 0) * (100 / Math.max(1, u.totalErrors || 1))))} pts
+                                  </div>
+                                </div>
+                              ) : u.isFinished ? (
+                                <span style={{ color: '#00f59b', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <CheckCircle size={14} /> FINISHED
+                                </span>
+                              ) : (
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Idle / Selecting</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px 10px', textAlign: 'center' }}>
+                              <button
+                                onClick={() => setSelectedPointInspectStudent(u)}
+                                className="btn-secondary"
+                                style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              >
+                                <Code size={14} /> Inspect Code & Diffs
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {/* VIEW 2: 194-QUESTION BANK POINT DISTRIBUTION MATRIX */}
+            {pointSubTab === 'bank' && (
+              <div className="glass-panel" style={{ padding: '1.5rem', overflowX: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.1rem' }}>
+                    📚 Complete Question Bank Error Split Matrix ({filteredQuestions.length} Questions)
+                  </h3>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    Displays exact category, error count (N), and split weight (100/N) for every question
+                  </span>
+                </div>
+
+                {filteredQuestions.length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>No questions found matching criteria.</p>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--accent-cyan)', fontFamily: 'var(--font-heading)', fontSize: '0.78rem', letterSpacing: '1px' }}>
+                        <th style={{ padding: '12px 10px', width: '50px' }}>#</th>
+                        <th style={{ padding: '12px 10px' }}>QUESTION TITLE & TOPIC</th>
+                        <th style={{ padding: '12px 10px' }}>CATEGORY</th>
+                        <th style={{ padding: '12px 10px' }}>ERROR COUNT (N)</th>
+                        <th style={{ padding: '12px 10px' }}>SPLIT VALUE PER ERROR</th>
+                        <th style={{ padding: '12px 10px' }}>BUGGY LINE NUMBERS</th>
+                        <th style={{ padding: '12px 10px' }}>MAX POINTS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredQuestions.map((q, idx) => {
+                        const meta = parseQuestionErrors(q);
+                        const cat = q.category || (meta.totalErrors === 1 ? 'Easy' : meta.totalErrors === 2 ? 'Medium' : 'Hard');
+                        const isEasy = cat === 'Easy';
+                        const isMed = cat === 'Medium';
+                        const isHard = cat === 'Hard';
+                        const color = isEasy ? '#00f59b' : isMed ? '#f59e0b' : '#ff003c';
+                        const bg = isEasy ? 'rgba(0, 245, 155, 0.15)' : isMed ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 0, 60, 0.15)';
+                        const border = isEasy ? 'rgba(0, 245, 155, 0.35)' : isMed ? 'rgba(245, 158, 11, 0.35)' : 'rgba(255, 0, 60, 0.35)';
+
+                        return (
+                          <tr key={q.id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: idx % 2 === 0 ? 'rgba(0,0,0,0.1)' : 'transparent' }}>
+                            <td style={{ padding: '12px 10px', color: 'var(--accent-cyan)', fontWeight: 'bold', fontFamily: 'var(--font-mono)' }}>
+                              #{idx + 1}
+                            </td>
+                            <td style={{ padding: '12px 10px' }}>
+                              <div style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{q.title}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px', maxWidth: '340px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {q.description}
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 10px' }}>
+                              <span style={{
+                                padding: '4px 10px',
+                                borderRadius: '12px',
+                                fontWeight: 'bold',
+                                fontSize: '0.8rem',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                background: bg,
+                                color: color,
+                                border: `1px solid ${border}`
+                              }}>
+                                ● {cat}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 10px' }}>
+                              <span style={{ 
+                                padding: '4px 10px', 
+                                borderRadius: '12px', 
+                                background: meta.totalErrors === 1 ? 'rgba(0, 245, 155, 0.15)' : meta.totalErrors === 2 ? 'rgba(0, 240, 255, 0.15)' : 'rgba(255, 0, 60, 0.15)',
+                                color: meta.totalErrors === 1 ? '#00f59b' : meta.totalErrors === 2 ? 'var(--accent-cyan)' : '#ff4d6d',
+                                fontWeight: 'bold',
+                                fontSize: '0.82rem'
+                              }}>
+                                {meta.totalErrors} {meta.totalErrors === 1 ? 'Error' : 'Errors'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 10px' }}>
+                              <div style={{ color: '#00f59b', fontWeight: 'bold', fontFamily: 'var(--font-mono)' }}>
+                                {meta.pointsPerError} PTS / Error
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                100 ÷ {meta.totalErrors}
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 10px', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--accent-magenta)' }}>
+                              {meta.errorLinesStr}
+                            </td>
+                            <td style={{ padding: '12px 10px', color: 'var(--text-primary)', fontWeight: 'bold' }}>
+                              100 PTS
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {/* Inspect Student Error Code Modal */}
+            {selectedPointInspectStudent && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '1.5rem' }}>
+                <div className="glass-panel" style={{ width: '95%', maxWidth: '900px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '1.5rem', border: '2px solid var(--accent-cyan)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '1rem', marginBottom: '1rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, color: 'var(--accent-cyan)', fontSize: '1.2rem' }}>
+                        🔍 ERROR SPLIT & CODE INSPECTION: {selectedPointInspectStudent.name}
+                      </h3>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                        Reg No: <strong>{selectedPointInspectStudent.regNo}</strong> | Department: <strong>{selectedPointInspectStudent.department}</strong> | Score: <strong style={{ color: '#00f59b' }}>{selectedPointInspectStudent.score || 0} PTS</strong>
+                      </p>
+                    </div>
+                    <button onClick={() => setSelectedPointInspectStudent(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                      <X size={24} />
+                    </button>
+                  </div>
+
+                  <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                    {Object.keys(selectedPointInspectStudent.submissions || {}).length === 0 ? (
+                      <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center', padding: '2rem' }}>No submitted missions found for this participant yet.</p>
+                    ) : (
+                      Object.entries(selectedPointInspectStudent.submissions || {}).map(([qId, sub], sIdx) => {
+                        const totalErr = sub.totalErrors || 1;
+                        const clearedErr = sub.clearedErrors !== undefined ? sub.clearedErrors : (sub.score === 100 ? totalErr : Math.round(sub.score / (100 / totalErr)));
+                        const ptsPerErr = sub.pointsPerError || +(100 / totalErr).toFixed(1);
+
+                        return (
+                          <div key={sIdx} style={{ background: 'var(--bg-deep-navy)', borderRadius: '8px', border: '1px solid var(--border-subtle)', padding: '1.2rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              <div>
+                                <h4 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1rem' }}>
+                                  #{sIdx + 1} {sub.title || qId}
+                                </h4>
+                                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                  Submitted at: {sub.submittedAt || sub.endTimeStr || 'N/A'}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#00f59b', background: 'rgba(0, 245, 155, 0.12)', padding: '4px 12px', borderRadius: '6px' }}>
+                                  {sub.score} / 100 PTS
+                                </span>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                  {clearedErr}/{totalErr} errors fixed × {ptsPerErr} pts
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={{ marginTop: '0.8rem' }}>
+                              <label style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>
+                                SUBMITTED C++ SOURCE CODE:
+                              </label>
+                              <pre style={{ 
+                                background: '#05070e', 
+                                padding: '1rem', 
+                                borderRadius: '6px', 
+                                border: '1px solid var(--border-subtle)', 
+                                color: '#e0e0e0', 
+                                fontFamily: 'var(--font-mono)', 
+                                fontSize: '0.85rem', 
+                                overflowX: 'auto', 
+                                maxHeight: '220px',
+                                margin: 0
+                              }}>
+                                {sub.submittedCode || '// No code recorded'}
+                              </pre>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem', marginTop: '1rem', textAlign: 'right' }}>
+                    <button onClick={() => setSelectedPointInspectStudent(null)} className="btn-secondary" style={{ padding: '8px 20px' }}>
+                      Close Window
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
       case 'submissions':
         const submittedUsers = liveUsers.filter(u => 
           Object.keys(u.submissions || {}).length > 0 || u.isFinished || (u.completedQuestions || []).length > 0 || (u.totalSubmissionsCount || 0) > 0
         );
         const totalSubs = submittedUsers.reduce((acc, u) => acc + (u.totalSubmissionsCount || Object.keys(u.submissions || {}).length || 0), 0);
-        const langTotals = submittedUsers.reduce((acc, u) => {
-          const lCount = u.langSubmissionsCount || {};
-          Object.entries(u.submissions || {}).forEach(([_, sub]) => {
-            const p = sub.phase || 'c';
-            if (!lCount[p]) acc[p] = (acc[p] || 0) + 1;
-          });
-          Object.entries(lCount).forEach(([p, cnt]) => {
-            acc[p] = (acc[p] || 0) + cnt;
-          });
-          return acc;
-        }, { c: 0, cpp: 0 });
 
         const selectedUser = liveUsers.find(u => u.id === selectedSubUserId);
+        const userSubsEntries = selectedUser ? Object.entries(selectedUser.submissions || {}) : [];
         const activeSubData = selectedUser ? (
-          Object.values(selectedUser.submissions || {}).find(s => s.phase === selectedSubPhase) ||
-          Object.entries(selectedUser.submissions || {}).find(([k, v]) => k.includes(selectedSubPhase) || v.phase === selectedSubPhase)?.[1]
+          (selectedSubPhase && selectedUser.submissions?.[selectedSubPhase]) ||
+          userSubsEntries.find(([k, v]) => k === selectedSubPhase || v.phase === selectedSubPhase)?.[1] ||
+          userSubsEntries[0]?.[1]
         ) : null;
 
         return (
@@ -1481,8 +2261,7 @@ const AdminDashboard = () => {
               <div style={{ display: 'flex', gap: '1rem', background: 'var(--bg-deep-navy)', padding: '0.6rem 1.2rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                 <span style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>Total Submissions: {totalSubs}</span>
                 <span style={{ color: 'var(--text-secondary)' }}>|</span>
-                <span>Round 1 (C): <strong>{langTotals.c || 0}</strong></span>
-                <span>Round 2 (C++): <strong>{langTotals.cpp || 0}</strong></span>
+                <span>Language: <strong>C++ (5 Missions)</strong></span>
               </div>
             </div>
 
@@ -1504,8 +2283,8 @@ const AdminDashboard = () => {
                           key={user.id}
                           onClick={() => {
                             setSelectedSubUserId(user.id);
-                            const firstPhase = Object.values(user.submissions || {})[0]?.phase || 'c';
-                            setSelectedSubPhase(firstPhase);
+                            const firstSubKey = Object.keys(user.submissions || {})[0] || 'cpp';
+                            setSelectedSubPhase(firstSubKey);
                           }}
                           style={{
                             padding: '1rem',
@@ -1526,7 +2305,7 @@ const AdminDashboard = () => {
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                             <span>Time: {user.elapsedTimeMs ? `${Math.floor(user.elapsedTimeMs / 60000)}m ${Math.floor((user.elapsedTimeMs % 60000) / 1000)}s` : 'N/A'}</span>
-                            <span>Submissions: <strong>{uSubsCount}</strong></span>
+                            <span>Missions Solved: <strong>{uSubsCount}/5</strong></span>
                           </div>
                         </div>
                       );
@@ -1554,37 +2333,36 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
-                    {/* Language / Stage Tabs */}
-                    <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1.2rem' }}>
-                      {[
-                        { id: 'c', label: 'ROUND 1 (C)' },
-                        { id: 'cpp', label: 'ROUND 2 (C++)' }
-                      ].map(({ id: lang, label }) => {
-                        const isTabSel = selectedSubPhase === lang;
-                        const hasSubmitted = Object.values(selectedUser.submissions || {}).some(s => s.phase === lang);
-                        return (
-                          <button
-                            key={lang}
-                            onClick={() => setSelectedSubPhase(lang)}
-                            className={isTabSel ? 'btn-primary' : 'btn-secondary'}
-                            style={{
-                              padding: '0.5rem 1.2rem',
-                              fontSize: '0.85rem',
-                              position: 'relative',
-                              opacity: !hasSubmitted && !isTabSel ? 0.6 : 1
-                            }}
-                          >
-                            {label}
-                            {hasSubmitted && <span style={{ marginLeft: '6px', color: '#00f59b' }}>✓</span>}
-                          </button>
-                        );
-                      })}
+                    {/* Mission Submissions Tabs */}
+                    <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1.2rem', flexWrap: 'wrap' }}>
+                      {userSubsEntries.length === 0 ? (
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No individual missions submitted yet.</span>
+                      ) : (
+                        userSubsEntries.map(([subKey, subData], idx) => {
+                          const isTabSel = selectedSubPhase === subKey || (!selectedSubPhase && idx === 0);
+                          return (
+                            <button
+                              key={subKey}
+                              onClick={() => setSelectedSubPhase(subKey)}
+                              className={isTabSel ? 'btn-primary' : 'btn-secondary'}
+                              style={{
+                                padding: '0.5rem 1.2rem',
+                                fontSize: '0.85rem',
+                                position: 'relative'
+                              }}
+                            >
+                              MISSION {idx + 1}: {subData.title ? (subData.title.length > 20 ? subData.title.slice(0, 20) + '...' : subData.title) : 'C++'}
+                              <span style={{ marginLeft: '6px', color: '#00f59b' }}>✓</span>
+                            </button>
+                          );
+                        })
+                      )}
                     </div>
 
                     {/* Selected Phase Details */}
                     {!activeSubData ? (
                       <div style={{ background: 'var(--bg-deep-navy)', padding: '2rem', borderRadius: '8px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        <p>No submission recorded for <strong>{selectedSubPhase.toUpperCase()}</strong> stage yet.</p>
+                        <p>No submission recorded yet for this participant.</p>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1704,8 +2482,8 @@ const AdminDashboard = () => {
             <thead style={{ display: 'table-header-group' }}>
               <tr style={{ borderBottom: '2px solid black', background: '#f8fafc', color: 'black', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                 <th style={{ width: '10%', padding: '8px 5px', color: 'black', border: '1.5px solid black', textAlign: 'center', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>Rank</th>
-                <th style={{ width: '32%', padding: '8px 8px', color: 'black', border: '1.5px solid black', textAlign: 'left', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle' }}>Participant Name</th>
-                <th style={{ width: '21%', padding: '8px 5px', color: 'black', border: '1.5px solid black', textAlign: 'center', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle' }}>Roll No / Lot</th>
+                <th style={{ width: '32%', padding: '8px 8px', color: 'black', border: '1.5px solid black', textAlign: 'left', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle' }}>Student Name</th>
+                <th style={{ width: '21%', padding: '8px 5px', color: 'black', border: '1.5px solid black', textAlign: 'center', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle' }}>Roll No</th>
                 <th style={{ width: '13%', padding: '8px 5px', color: 'black', border: '1.5px solid black', textAlign: 'center', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle' }}>Errors Fixed</th>
                 <th style={{ width: '12%', padding: '8px 5px', color: 'black', border: '1.5px solid black', textAlign: 'center', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle' }}>Time Taken</th>
                 <th style={{ width: '12%', padding: '8px 5px', color: 'black', border: '1.5px solid black', textAlign: 'center', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle' }}>Total Score</th>
@@ -1741,9 +2519,7 @@ const AdminDashboard = () => {
                       <div className="avoid-break" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '2.5px solid black', paddingBottom: '1.2rem', marginBottom: '1.5rem', color: 'black', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                         <img src="/college-logo.png" alt="College Logo" style={{ width: '90px', height: '90px', objectFit: 'contain' }} />
                         <div style={{ textAlign: 'center', flex: 1, padding: '0 1rem', color: 'black' }}>
-                          <div style={{ fontWeight: '900', fontSize: '1.18rem', letterSpacing: '3px' }}>SOFTECH</div>
-                          <div style={{ fontWeight: '800', fontSize: '1.08rem', margin: '3px 0' }}>DEPARTMENT OF COMPUTER APPLICATIONS</div>
-                          <div style={{ fontWeight: '900', fontSize: '1.35rem', margin: '4px 0' }}>AYYA NADAR JANAKI AMMAL COLLEGE</div>
+                          <div style={{ fontWeight: '900', fontSize: '1.38rem', margin: '0 0 4px 0', letterSpacing: '0.5px' }}>AYYA NADAR JANAKI AMMAL COLLEGE</div>
                           <div style={{ fontSize: '0.68rem', lineHeight: '1.35', fontWeight: '500', maxWidth: '680px', margin: '0 auto' }}>
                             (Autonomous, Affiliated to Madurai Kamaraj University, Madurai, Re-accredited (4th Cycle) with 'A+' Grade
                             (CGPA 3.48 out of 4) by NAAC, Recognized as College of Excellence and Mentor Institution by UGC, STAR College by DBT
@@ -1754,8 +2530,11 @@ const AdminDashboard = () => {
                         <img src="/dept-logo.png" alt="Dept Logo" style={{ width: '90px', height: '90px', objectFit: 'contain' }} />
                       </div>
 
-                      {/* Event & Sheet Title Subheading */}
+                      {/* Department, Event & Sheet Title Subheading */}
                       <div className="avoid-break" style={{ textAlign: 'center', marginBottom: '1.6rem', color: 'black', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                        <div style={{ fontWeight: '800', fontSize: '1.12rem', margin: '0 0 0.35rem 0', color: 'black', letterSpacing: '0.5px' }}>
+                          DEPARTMENT OF COMPUTER APPLICATIONS
+                        </div>
                         <h2 style={{ fontSize: '1.35rem', fontWeight: 'bold', margin: '0 0 0.4rem 0', color: 'black', textTransform: 'uppercase' }}>
                           {reportEventName}
                         </h2>
@@ -1788,7 +2567,7 @@ const AdminDashboard = () => {
                                 {user.name || 'Anonymous'}
                               </td>
                               <td style={{ width: '21%', padding: '6px 5px', color: 'black', border: '1px solid black', textAlign: 'center', verticalAlign: 'middle', fontSize: '10pt' }}>
-                                {user.rollNo || 'N/A'} (UG)
+                                {user.rollNo || user.regNo || 'N/A'}
                               </td>
                               <td style={{ width: '13%', padding: '6px 5px', color: 'black', border: '1px solid black', textAlign: 'center', verticalAlign: 'middle', fontSize: '10pt' }}>
                                 {(user.cumulativeClearedErrors || 0) + (user.clearedErrors || 0)} / {(user.cumulativeTotalErrors || 0) + (user.totalErrors || 0)}
@@ -1977,120 +2756,6 @@ const AdminDashboard = () => {
             {renderSharedPrintableSection()}
           </div>
         );
-
-      case 'conclusion':
-        const conclusionUsers = getSortedParticipantsByCategory(liveUsers, adminCategoryFilter);
-        return (
-          <div className="glass-panel" style={{ padding: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <h2 className="glow-text-cyan" style={{ margin: 0 }}>WINNER CONCLUSION</h2>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <span style={{ padding: '5px 14px', fontSize: '0.82rem', fontWeight: 'bold', borderRadius: '12px', border: '1px solid #00f0ff', color: '#00f0ff', background: 'rgba(0, 240, 255, 0.1)' }}>
-                  UG (UNDERGRADUATE)
-                </span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '2rem' }}>
-              <div style={{ flex: '1', borderRight: '1px solid var(--border-subtle)', paddingRight: '1rem', maxHeight: '70vh', overflowY: 'auto' }}>
-                <h3 style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>SELECT UG PARTICIPANT</h3>
-                <div style={{ display: 'grid', gap: '0.5rem' }}>
-                  {conclusionUsers.map(user => {
-                    return (
-                    <button 
-                      key={user.id} 
-                      onClick={() => setSelectedConclusionUser(user)}
-                      className={selectedConclusionUser?.id === user.id ? 'btn-primary' : 'btn-secondary'}
-                      style={{ textAlign: 'left', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                    >
-                      <div>
-                        <span>{user.rollNo} - {user.name}</span>
-                        <span style={{ marginLeft: '6px', padding: '1px 5px', borderRadius: '8px', fontSize: '0.65rem', background: 'rgba(0, 240, 255, 0.15)', color: '#00f0ff', border: '1px solid #00f0ff' }}>UG</span>
-                      </div>
-                      <span style={{ color: user.score < 0 ? 'var(--accent-magenta)' : 'var(--accent-cyan)' }}>{user.score}</span>
-                    </button>
-                  );})}
-                </div>
-              </div>
-              
-              <div style={{ flex: '2', paddingLeft: '1rem', maxHeight: '70vh', overflowY: 'auto' }}>
-                {selectedConclusionUser ? (
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                      <div>
-                        <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '2rem' }}>{selectedConclusionUser.name}</h2>
-                        <span style={{ color: 'var(--text-secondary)' }}>LOT / ROLL NO: {selectedConclusionUser.rollNo}</span>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>TOTAL CONCLUSION</span>
-                        <h2 style={{ margin: 0, fontSize: '3rem', color: selectedConclusionUser.score < 0 ? 'var(--accent-magenta)' : 'var(--accent-cyan)' }}>{selectedConclusionUser.score}</h2>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gap: '1rem' }}>
-                      {['c', 'cpp'].map(phase => {
-                        const phaseSubmissions = Object.values(selectedConclusionUser.submissions || {}).filter(s => s.phase === phase || (phase === 'c' && s.phase === 'easy') || (phase === 'cpp' && s.phase === 'medium'));
-                        if (phaseSubmissions.length === 0) return null;
-                        
-                        let phaseScore = 0;
-                        let phaseCleared = 0;
-                        let phaseTotal = 0;
-                        let phaseLines = 0;
-                        let phaseTargetLines = 0;
-                        
-                        phaseSubmissions.forEach(s => {
-                          phaseScore += (s.score || 0);
-                          phaseCleared += (s.clearedErrors || 0);
-                          phaseTotal += (s.totalErrors || 0);
-                          phaseLines += (s.codeLines || 0);
-                          phaseTargetLines += (s.targetLines || 0);
-                        });
-
-                        const phaseTitle = phase === 'c' ? 'ROUND 1 (C LANGUAGE)' : 'ROUND 2 (C++ LANGUAGE)';
-
-                        return (
-                          <div key={phase} style={{ background: 'var(--bg-deep-navy)', padding: '1.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                            <h3 style={{ textTransform: 'uppercase', color: 'var(--text-primary)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-                              <span>{phaseTitle}</span>
-                              <span style={{ color: 'var(--accent-cyan)' }}>{phaseScore} PTS</span>
-                            </h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                              <div style={{ padding: '1rem', background: 'rgba(0, 240, 255, 0.05)', borderRadius: '4px' }}>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>ERRORS FIXED</div>
-                                <div style={{ fontSize: '1.5rem', color: 'var(--text-primary)' }}><span style={{ color: 'var(--accent-cyan)' }}>{phaseCleared}</span> / {phaseTotal}</div>
-                              </div>
-                              <div style={{ padding: '1rem', background: 'rgba(255, 42, 109, 0.05)', borderRadius: '4px' }}>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>CODE LINES</div>
-                                <div style={{ fontSize: '1.5rem', color: 'var(--text-primary)' }}><span style={{ color: 'var(--accent-pink)' }}>{phaseLines}</span> / {phaseTargetLines}</div>
-                              </div>
-                            </div>
-                            <div style={{ marginTop: '1rem' }}>
-                              <h4 style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>INDIVIDUAL PROGRAMS</h4>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                {phaseSubmissions.map((s, i) => (
-                                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
-                                    <span style={{ color: 'var(--text-primary)' }}>{s.title || 'Unknown Mission'}</span>
-                                    <span style={{ color: 'var(--accent-cyan)' }}>{s.score} pts</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {Object.keys(selectedConclusionUser.submissions || {}).length === 0 && (
-                        <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>No completed missions yet.</p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-                    Select a participant from the left to view their detailed conclusion.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
       
       default: return null;
     }
@@ -2146,7 +2811,7 @@ const AdminDashboard = () => {
                   📥 BULK UPLOAD QUESTIONS (JSON)
                 </h3>
                 <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                  Upload 150+ questions for Round 1 (C) and Round 2 (C++) in one quick step
+                  Upload C++ questions in one quick step
                 </p>
               </div>
               <button 
@@ -2284,7 +2949,6 @@ const AdminDashboard = () => {
           </div>
           
           <a href="/leaderboard" target="_blank" rel="noreferrer" className="sidebar-btn"><Trophy size={18} /> Leaderboard</a>
-          <a href="/winners" target="_blank" rel="noreferrer" className="sidebar-btn" style={{ color: 'var(--accent-cyan)' }}><Sparkles size={18} /> Top 3 Winners</a>
           <button onClick={() => setActiveTab('branding')} className={`sidebar-btn ${activeTab === 'branding' ? 'active' : ''}`}><Sparkles size={18} /> Page Content & Branding</button>
           <button onClick={() => setActiveTab('event')} className={`sidebar-btn ${activeTab === 'event' ? 'active' : ''}`}><Clock size={18} /> Round Setting</button>
           <button onClick={() => setActiveTab('questions')} className={`sidebar-btn ${activeTab === 'questions' ? 'active' : ''}`}><FileText size={18} /> Questions</button>
@@ -2292,7 +2956,7 @@ const AdminDashboard = () => {
           <button onClick={() => setActiveTab('results')} className={`sidebar-btn ${activeTab === 'results' ? 'active' : ''}`}><FileDown size={18} /> Results & PDF</button>
           <button onClick={() => setActiveTab('esign')} className={`sidebar-btn ${activeTab === 'esign' ? 'active' : ''}`}><PenTool size={18} /> Staff E-Sign & PDF</button>
           <button onClick={() => setActiveTab('submissions')} className={`sidebar-btn ${activeTab === 'submissions' ? 'active' : ''}`}><Code size={18} /> Submissions</button>
-          <button onClick={() => setActiveTab('conclusion')} className={`sidebar-btn ${activeTab === 'conclusion' ? 'active' : ''}`}><Award size={18} /> Conclusion</button>
+          <button onClick={() => setActiveTab('points')} className={`sidebar-btn ${activeTab === 'points' ? 'active' : ''}`}><Calculator size={18} /> Point Distribution</button>
           <button onClick={() => setActiveTab('languages')} className={`sidebar-btn ${activeTab === 'languages' ? 'active' : ''}`}><Sliders size={18} /> Language Settings</button>
           
           <div style={{ marginTop: 'auto' }}>

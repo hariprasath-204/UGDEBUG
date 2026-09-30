@@ -11,6 +11,14 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+
+# Local Questions Bank and Utility Automation Scripts
+questions/
+scripts/
+pdf/*.pdf
+final.txt
 
 # Editor directories and files
 .vscode/*
@@ -23,5 +31,3 @@ dist-ssr
 *.sln
 *.sw?
 
-# Event Reports (Local Only - Do Not Commit/Push)
-final.txt

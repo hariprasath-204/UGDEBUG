@@ -23,10 +23,11 @@ function AppContent() {
         className="app-container"
         style={{
           minHeight: '100vh',
-          padding: isLanding ? '0' : '2rem',
+          padding: isLanding ? '0' : '1.5rem',
           boxSizing: 'border-box',
           width: '100vw',
-          overflow: isLanding ? 'hidden' : 'auto'
+          overflowY: isLanding ? 'hidden' : 'auto',
+          overflowX: 'hidden'
         }}
       >
         <Routes>

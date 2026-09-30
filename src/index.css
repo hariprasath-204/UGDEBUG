@@ -45,33 +45,36 @@
 /* Global Reset & Base */
 
 html, body, #root {
-  height: 100%;
+  min-height: 100%;
   margin: 0;
   padding: 0;
   background-color: var(--bg-main);
   color: var(--text-primary);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   selection-background-color: #ff003c;
   selection-color: #ffffff;
 }
 
 /* Custom Cyber Red Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(6, 6, 8, 0.9);
+  background: rgba(6, 6, 8, 0.95);
+  border-left: 1px solid rgba(255, 0, 60, 0.15);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 0, 60, 0.35);
-  border-radius: 4px;
+  background: linear-gradient(180deg, #ff003c 0%, #b7002b 100%);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #ff003c;
-  box-shadow: 0 0 12px #ff003c;
+  box-shadow: 0 0 15px #ff003c;
 }
 
 h1, h2, h3, h4, h5, h6 {
