@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import LoadingOverlay from './LoadingOverlay';
 import PopupMessage from './PopupMessage';
 import { syncClock, getNow } from '../utils/timeSync';
-import { sortParticipants, getStudentCategory, getSortedParticipantsByCategory } from '../utils/ranking';
+import { sortParticipants, getStudentCategory, getSortedParticipantsByCategory, getParticipantSection } from '../utils/ranking';
 import { Trophy, Clock, FileText, Users, Activity, FileDown, Code, MonitorPlay, Sliders, Trash2, RefreshCw, Edit, Award, Sparkles, GraduationCap, PenTool, Upload, CheckCircle, Image, X, Calculator, Search, Check, AlertCircle, Percent, BarChart3, Layers } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
@@ -116,7 +116,7 @@ const AdminDashboard = () => {
   const [selectedConclusionUser, setSelectedConclusionUser] = useState(null);
   const [selectedSubUserId, setSelectedSubUserId] = useState(null);
   const [selectedSubPhase, setSelectedSubPhase] = useState('cpp');
-  const [adminCategoryFilter, setAdminCategoryFilter] = useState('UG');
+  const [adminCategoryFilter, setAdminCategoryFilter] = useState('ALL'); // 'ALL', 'A', 'B'
   const [reportType, setReportType] = useState('scoresheet'); // 'scoresheet' or 'winners'
   const [reportEventName, setReportEventName] = useState('CODATHAN - DEBUGGING EVENT');
   const [judgeSignatures, setJudgeSignatures] = useState(['Staff Signature']);
@@ -2741,9 +2741,9 @@ const AdminDashboard = () => {
       case 'esign':
         const filteredUsers = getSortedParticipantsByCategory(liveUsers, adminCategoryFilter);
         const displayUsers = reportType === 'winners' ? filteredUsers.slice(0, 3) : filteredUsers;
-        const ugCount = getSortedParticipantsByCategory(liveUsers, 'UG').length;
-        const pgCount = getSortedParticipantsByCategory(liveUsers, 'PG').length;
-        const allCount = getSortedParticipantsByCategory(liveUsers, 'ALL').length;
+        const allCount = liveUsers.length;
+        const sectionACount = liveUsers.filter(u => getParticipantSection(u.rollNo || u.roll_no || u.regNo) === 'A').length;
+        const sectionBCount = liveUsers.filter(u => getParticipantSection(u.rollNo || u.roll_no || u.regNo) === 'B').length;
 
         const handleAddJudgeSig = () => {
           if (newSigTitle.trim()) {
@@ -2761,7 +2761,8 @@ const AdminDashboard = () => {
           if (!element) return;
           const cleanEventName = (reportEventName || 'CODATHAN').replace(/[^a-zA-Z0-9]/g, '_');
           const cleanReportType = reportType === 'scoresheet' ? 'ScoreSheet' : 'Winners';
-          const filename = `${cleanEventName}_${cleanReportType}_${adminCategoryFilter}.pdf`;
+          const sectionTag = adminCategoryFilter === 'ALL' ? 'Full' : `Section_${adminCategoryFilter}`;
+          const filename = `${cleanEventName}_${cleanReportType}_${sectionTag}.pdf`;
           
           const opt = {
             margin:       [12, 10, 12, 10],
@@ -2855,7 +2856,7 @@ const AdminDashboard = () => {
                           DEPARTMENT OF COMPUTER APPLICATIONS
                         </div>
                         <h2 style={{ fontSize: '12pt', fontWeight: 'bold', margin: 0, color: 'black', textTransform: 'uppercase' }}>
-                          {reportEventName}
+                          {reportEventName}{adminCategoryFilter !== 'ALL' ? ` — SECTION ${adminCategoryFilter}` : ''}
                         </h2>
                       </div>
                     </>
@@ -2978,18 +2979,38 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                {/* 2. Category Filter */}
+                {/* 2. Section / Batch Filter */}
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: 'bold', marginBottom: '8px', letterSpacing: '1px' }}>
-                    2. STUDENT CATEGORY
+                    2. SECTION FILTER (A / B / FULL)
                   </label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <div
-                      className="btn-primary"
-                      style={{ flex: 1, padding: '8px 10px', fontSize: '0.82rem', borderColor: '#007fd7', color: '#040711', background: '#007fd7', textAlign: 'center', fontWeight: 'bold' }}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setAdminCategoryFilter('ALL')}
+                      className={adminCategoryFilter === 'ALL' ? 'btn-primary' : 'btn-secondary'}
+                      style={{ flex: '1 1 80px', padding: '8px 8px', fontSize: '0.78rem', textAlign: 'center' }}
                     >
-                      UG (UNDERGRADUATE) — {ugCount} PARTICIPANTS
-                    </div>
+                      📊 ALL ({allCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdminCategoryFilter('A')}
+                      className={adminCategoryFilter === 'A' ? 'btn-primary' : 'btn-secondary'}
+                      style={{ flex: '1 1 110px', padding: '8px 8px', fontSize: '0.78rem', textAlign: 'center' }}
+                      title="Section A: 100-series (e.g. 26PCA101)"
+                    >
+                      🅰️ SEC A ({sectionACount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdminCategoryFilter('B')}
+                      className={adminCategoryFilter === 'B' ? 'btn-primary' : 'btn-secondary'}
+                      style={{ flex: '1 1 110px', padding: '8px 8px', fontSize: '0.78rem', textAlign: 'center' }}
+                      title="Section B: 200-series (e.g. 26PCA201)"
+                    >
+                      🅱️ SEC B ({sectionBCount})
+                    </button>
                   </div>
                 </div>
 

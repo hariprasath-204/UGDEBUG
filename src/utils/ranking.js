@@ -38,6 +38,30 @@ export function sortParticipants(users) {
 }
 
 /**
+ * Detects whether a participant belongs to Section A (100 series, e.g. 26PCA101) or Section B (200 series, e.g. 26PCA201).
+ */
+export function getParticipantSection(rollNo) {
+  const str = String(rollNo || '').trim().toUpperCase();
+  if (!str) return 'A';
+
+  // Explicit Section markers
+  if (str.includes('SEC A') || str.includes('SECTION A') || str.endsWith('-A') || str.endsWith(' A')) return 'A';
+  if (str.includes('SEC B') || str.includes('SECTION B') || str.endsWith('-B') || str.endsWith(' B')) return 'B';
+
+  // 100-series (Section A) vs 200-series (Section B) lot numbers e.g. 26PCA101, 26PCA201
+  const match = str.match(/([12])\d{2}/);
+  if (match) {
+    if (match[1] === '1') return 'A';
+    if (match[1] === '2') return 'B';
+  }
+
+  if (str.includes('101') || str.includes('102') || str.includes('PCA1')) return 'A';
+  if (str.includes('201') || str.includes('202') || str.includes('PCA2')) return 'B';
+
+  return 'A';
+}
+
+/**
  * Determines the student category ('UG') for all participants.
  */
 export function getStudentCategory(rollNo) {
@@ -45,8 +69,23 @@ export function getStudentCategory(rollNo) {
 }
 
 /**
- * Filters participants by category and sorts them using sortParticipants.
+ * Filters participants by Section ('ALL', 'A', 'B') and sorts them using sortParticipants.
  */
-export function getSortedParticipantsByCategory(users, category = 'UG') {
-  return sortParticipants(users);
+export function getSortedParticipantsByCategory(users, filter = 'ALL') {
+  const sorted = sortParticipants(users);
+  const normalizedFilter = String(filter || 'ALL').toUpperCase();
+
+  if (normalizedFilter === 'ALL' || normalizedFilter === 'FULL' || normalizedFilter === 'UG') {
+    return sorted;
+  }
+
+  if (normalizedFilter === 'A' || normalizedFilter === 'SECTION A' || normalizedFilter === 'SECTION_A') {
+    return sorted.filter(u => getParticipantSection(u.rollNo || u.roll_no || u.regNo) === 'A');
+  }
+
+  if (normalizedFilter === 'B' || normalizedFilter === 'SECTION B' || normalizedFilter === 'SECTION_B') {
+    return sorted.filter(u => getParticipantSection(u.rollNo || u.roll_no || u.regNo) === 'B');
+  }
+
+  return sorted;
 }

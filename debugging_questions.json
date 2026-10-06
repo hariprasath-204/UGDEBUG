@@ -1,0 +1,366 @@
+[
+  {
+    "title": "C++ Bug: Factorial of a Number",
+    "phase": "cpp",
+    "description": "Debug the factorial program. (logic and syntax).",
+    "points": 100,
+    "expectedOutput": "Factorial = 120",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int n = 5;\n    int fact = 0;\n    for(int i = 1; i <= n; i++) {\n        fact = fact * i;\n    }\n    cout << \"Factorial = \" << fact\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int n = 5;\n    int fact = 1;\n    for(int i = 1; i <= n; i++) {\n        fact = fact * i;\n    }\n    cout << \"Factorial = \" << fact;\n    return 0;\n}",
+        "errorLines": "6,10"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Sum of Natural Numbers",
+    "phase": "cpp",
+    "description": "Debug the sum of natural numbers program. (logic and syntax).",
+    "points": 100,
+    "expectedOutput": "Sum = 55",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int n = 10;\n    int sum = 0;\n    for(int i = 1; i < n; i++) {\n        sum = sum + i\n    }\n    cout << \"Sum = \" << sum;\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int n = 10;\n    int sum = 0;\n    for(int i = 1; i <= n; i++) {\n        sum = sum + i;\n    }\n    cout << \"Sum = \" << sum;\n    return 0;\n}",
+        "errorLines": "7,8"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Sum and Average",
+    "phase": "cpp",
+    "description": "Debug the sum and average program. (logic and syntax).",
+    "points": 100,
+    "expectedOutput": "Sum = 55\nAverage = 18.3333",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int a = 10, b = 20, c = 25;\n    float average;\n    int sum = a + b + c;\n    average = sum / 3;\n    cout << \"Sum = \" << sum << endl\n    cout << \"Average = \" << average;\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int a = 10, b = 20, c = 25;\n    float average;\n    int sum = a + b + c;\n    average = sum / 3.0;\n    cout << \"Sum = \" << sum << endl;\n    cout << \"Average = \" << average;\n    return 0;\n}",
+        "errorLines": "8,9"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Odd or Even",
+    "phase": "cpp",
+    "description": "Debug the odd or even checking program. (logic and syntax).",
+    "points": 100,
+    "expectedOutput": "Odd Number",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int n = 7;\n    if(n % 2 == 1)\n        cout << \"Even Number\";\n    else\n        cout << \"Odd Number\"\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int n = 7;\n    if(n % 2 == 0)\n        cout << \"Even Number\";\n    else\n        cout << \"Odd Number\";\n    return 0;\n}",
+        "errorLines": "6,9"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Displaying a Student Mark",
+    "phase": "cpp",
+    "description": "Debug the student mark class program. (logic and syntax).",
+    "points": 100,
+    "expectedOutput": "Mark = 85\nResult = Pass",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nclass Student {\n    int mark;\npublic:\n    void getMark() {\n        mark = 85;\n    }\n    void display() {\n        cout << \"Mark = \" << mark << endl;\n        if(mark < 50)\n            cout << \"Result = Pass\";\n        else\n            cout << \"Result = Fail\";\n    }\n};\n\nint main() {\n    Student s;\n    s.getmark();\n    s.display();\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nclass Student {\n    int mark;\npublic:\n    void getMark() {\n        mark = 85;\n    }\n    void display() {\n        cout << \"Mark = \" << mark << endl;\n        if(mark >= 50)\n            cout << \"Result = Pass\";\n        else\n            cout << \"Result = Fail\";\n    }\n};\n\nint main() {\n    Student s;\n    s.getMark();\n    s.display();\n    return 0;\n}",
+        "errorLines": "12,21"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Rectangle Area using Class",
+    "phase": "cpp",
+    "description": "Debug the rectangle area class program. (logic and syntax).",
+    "points": 100,
+    "expectedOutput": "Area = 50",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nclass Rectangle {\n    int length, breadth;\npublic:\n    void getData() {\n        length = 10;\n        breadth = 5;\n    }\n    int area() {\n        return length + breadth;\n    }\n    void display() {\n        cout << \"Area = \" << area();\n    }\n};\n\nint main() {\n    Rectangle r;\n    r.getData;\n    r.display();\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nclass Rectangle {\n    int length, breadth;\npublic:\n    void getData() {\n        length = 10;\n        breadth = 5;\n    }\n    int area() {\n        return length * breadth;\n    }\n    void display() {\n        cout << \"Area = \" << area();\n    }\n};\n\nint main() {\n    Rectangle r;\n    r.getData();\n    r.display();\n    return 0;\n}",
+        "errorLines": "12,21"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Cube of a Number",
+    "phase": "cpp",
+    "description": "Debug the cube of a number program. (logic and syntax).",
+    "points": 100,
+    "expectedOutput": "Cube = 27",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nint cube(int n) {\n    return n * n;\n}\n\nint main() {\n    int n = 3;\n    int result = cube;\n    cout << \"Cube = \" << result;\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nint cube(int n) {\n    return n * n * n;\n}\n\nint main() {\n    int n = 3;\n    int result = cube(n);\n    cout << \"Cube = \" << result;\n    return 0;\n}",
+        "errorLines": "5,10"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Positive, Negative or Zero",
+    "phase": "cpp",
+    "description": "Debug the number checking program. (logic and syntax).",
+    "points": 100,
+    "expectedOutput": "Negative",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nvoid check(int n) {\n    if(n > 0)\n        cout << \"Positive\";\n    else if(n > 0)\n        cout << \"Negative\";\n    else\n        cout << \"Zero\"\n}\n\nint main() {\n    int n = -4;\n    check(n);\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nvoid check(int n) {\n    if(n > 0)\n        cout << \"Positive\";\n    else if(n < 0)\n        cout << \"Negative\";\n    else\n        cout << \"Zero\";\n}\n\nint main() {\n    int n = -4;\n    check(n);\n    return 0;\n}",
+        "errorLines": "7,10"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Employee Salary",
+    "phase": "cpp",
+    "description": "Debug the employee salary class program. (logic and syntax).",
+    "points": 100,
+    "expectedOutput": "Salary = 22000",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nclass Employee {\n    int basic, salary;\npublic:\n    void getData() {\n        basic = 20000;\n    }\n    void calculate() {\n        salary = basic * 10 / 100;\n    }\n    void display() {\n        cout << \"Salary = \" << salary\n    }\n};\n\nint main() {\n    Employee e;\n    e.getData();\n    e.calculate();\n    e.display();\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nclass Employee {\n    int basic, salary;\npublic:\n    void getData() {\n        basic = 20000;\n    }\n    void calculate() {\n        salary = basic + basic * 10 / 100;\n    }\n    void display() {\n        cout << \"Salary = \" << salary;\n    }\n};\n\nint main() {\n    Employee e;\n    e.getData();\n    e.calculate();\n    e.display();\n    return 0;\n}",
+        "errorLines": "11,14"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Multiplication Table",
+    "phase": "cpp",
+    "description": "Debug the multiplication table program. (logic and syntax).",
+    "points": 100,
+    "expectedOutput": "5 x 1 = 5\n5 x 2 = 10\n5 x 3 = 15\n5 x 4 = 20\n5 x 5 = 25\n5 x 6 = 30\n5 x 7 = 35\n5 x 8 = 40\n5 x 9 = 45\n5 x 10 = 50",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nvoid table(int n) {\n    for(int i = 1; i < 10; i++) {\n        cout << n << \" x \" << i << \" = \" << n * i << endl;\n    }\n}\n\nint main() {\n    int n = 5;\n    table(n)\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nvoid table(int n) {\n    for(int i = 1; i <= 10; i++) {\n        cout << n << \" x \" << i << \" = \" << n * i << endl;\n    }\n}\n\nint main() {\n    int n = 5;\n    table(n);\n    return 0;\n}",
+        "errorLines": "5,12"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Factorial using Function",
+    "phase": "cpp",
+    "description": "Debug the factorial function program. (logic and syntax).",
+    "points": 200,
+    "expectedOutput": "Factorial of 5 = 120\nIs even: Yes",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nlong long factorial(int n) {\n    long long fact = 0;\n    for(int i = 1; i <= n; i++) {\n        fact = fact + i;\n    }\n    return fact\n}\n\nint main() {\n    int n = 5;\n    long long result = factoral(n);\n    cout << \"Factorial of \" << n << \" = \" << result << endl;\n    cout << \"Is even: \" << (result % 2 == 1 ? \"Yes\" : \"No\") << endl;\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nlong long factorial(int n) {\n    long long fact = 1;\n    for(int i = 1; i <= n; i++) {\n        fact = fact * i;\n    }\n    return fact;\n}\n\nint main() {\n    int n = 5;\n    long long result = factorial(n);\n    cout << \"Factorial of \" << n << \" = \" << result << endl;\n    cout << \"Is even: \" << (result % 2 == 0 ? \"Yes\" : \"No\") << endl;\n    return 0;\n}",
+        "errorLines": "5,7,9,14,16"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Prime Number",
+    "phase": "cpp",
+    "description": "Debug the prime number checking program. (logic and syntax).",
+    "points": 200,
+    "expectedOutput": "29 is a Prime Number\n15 is Not a Prime Number",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nbool isPrime(int n) {\n    int count = 1;\n    for(int i = 1; i < n; i++) {\n        if(n % i = 0)\n            count++;\n    }\n    return count = 2;\n}\n\nint main() {\n    int nums[2] = {29, 15};\n    for(int k = 0; k < 2; k++) {\n        if(isPrime(nums[k]))\n            cout << nums[k] << \" is a Prime Number\" << endl\n        else\n            cout << nums[k] << \" is Not a Prime Number\" << endl;\n    }\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nbool isPrime(int n) {\n    int count = 0;\n    for(int i = 1; i <= n; i++) {\n        if(n % i == 0)\n            count++;\n    }\n    return count == 2;\n}\n\nint main() {\n    int nums[2] = {29, 15};\n    for(int k = 0; k < 2; k++) {\n        if(isPrime(nums[k]))\n            cout << nums[k] << \" is a Prime Number\" << endl;\n        else\n            cout << nums[k] << \" is Not a Prime Number\" << endl;\n    }\n    return 0;\n}",
+        "errorLines": "5,6,7,10,17"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Count Even Numbers",
+    "phase": "cpp",
+    "description": "Debug the even and odd counting program. (logic and syntax).",
+    "points": 200,
+    "expectedOutput": "Even numbers = 3\nOdd numbers = 2\nSum of evens = 40",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int a[5] = {3, 8, 12, 7, 20};\n    int evenCount = 0, oddCount = 0 evenSum = 0;\n    for(int i = 0; i <= 5; i++) {\n        if(a[i] % 2 == 1) {\n            evenCount++;\n            evenSum = a[i];\n        } else {\n            oddCount++;\n        }\n    }\n    cout << \"Even numbers = \" << evenCount << endl;\n    cout << \"Odd numbers = \" << oddCount << endl\n    cout << \"Sum of evens = \" << evenSum << endl;\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int a[5] = {3, 8, 12, 7, 20};\n    int evenCount = 0, oddCount = 0, evenSum = 0;\n    for(int i = 0; i < 5; i++) {\n        if(a[i] % 2 == 0) {\n            evenCount++;\n            evenSum += a[i];\n        } else {\n            oddCount++;\n        }\n    }\n    cout << \"Even numbers = \" << evenCount << endl;\n    cout << \"Odd numbers = \" << oddCount << endl;\n    cout << \"Sum of evens = \" << evenSum << endl;\n    return 0;\n}",
+        "errorLines": "6,7,8,10,16"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Student Grade",
+    "phase": "cpp",
+    "description": "Debug the student grade program. (logic and syntax).",
+    "points": 200,
+    "expectedOutput": "Mark 92 -> Grade A : Excellent\nMark 75 -> Grade B : Good\nMark 40 -> Grade F : Needs Improvement",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nchar grade(int mark) {\n    if(mark >= 90)\n        return 'A';\n    else if(mark > 75)\n        return 'B';\n    else if(mark >= 50)\n        return 'C';\n    else\n        return 'F';\n}\n\nint main() {\n    int marks[3] = {92, 75, 40};\n    for(int i = 0; i < 2; i++) {\n        char g = Grade(marks[i]);\n        cout << \"Mark \" << marks[i] << \" -> Grade \" << g << \" : \";\n        if(g == 'A')\n            cout << \"Excellent\" << endl\n        else if(g == 'C')\n            cout << \"Good\" << endl;\n        else\n            cout << \"Needs Improvement\" << endl;\n    }\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nchar grade(int mark) {\n    if(mark >= 90)\n        return 'A';\n    else if(mark >= 75)\n        return 'B';\n    else if(mark >= 50)\n        return 'C';\n    else\n        return 'F';\n}\n\nint main() {\n    int marks[3] = {92, 75, 40};\n    for(int i = 0; i < 3; i++) {\n        char g = grade(marks[i]);\n        cout << \"Mark \" << marks[i] << \" -> Grade \" << g << \" : \";\n        if(g == 'A')\n            cout << \"Excellent\" << endl;\n        else if(g == 'B')\n            cout << \"Good\" << endl;\n        else\n            cout << \"Needs Improvement\" << endl;\n    }\n    return 0;\n}",
+        "errorLines": "7,17,18,21,22"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Simple Interest",
+    "phase": "cpp",
+    "description": "Debug the simple interest class program. (logic and syntax).",
+    "points": 200,
+    "expectedOutput": "Simple Interest = 100\nTotal Amount = 1100",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nclass Interest {\n    float p, r, t;\npublic:\n    void input() {\n        p = 1000;\n        r = 5;\n        t = 2;\n    }\n    float calculate() {\n        float rate = r * 100;\n        return P * rate * t;\n    }\n    void display() {\n        float si = calculate;\n        float total = p - si;\n        cout << \"Simple Interest = \" << si << endl;\n        cout << \"Total Amount = \" << total << endl;\n    }\n};\n\nint main() {\n    Interset i;\n    i.input();\n    i.display();\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nclass Interest {\n    float p, r, t;\npublic:\n    void input() {\n        p = 1000;\n        r = 5;\n        t = 2;\n    }\n    float calculate() {\n        float rate = r / 100;\n        return p * rate * t;\n    }\n    void display() {\n        float si = calculate();\n        float total = p + si;\n        cout << \"Simple Interest = \" << si << endl;\n        cout << \"Total Amount = \" << total << endl;\n    }\n};\n\nint main() {\n    Interest i;\n    i.input();\n    i.display();\n    return 0;\n}",
+        "errorLines": "13,14,17,18,25"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Single Inheritance - Age Classification",
+    "phase": "cpp",
+    "description": "Debug the single inheritance program. (logic and syntax).",
+    "points": 200,
+    "expectedOutput": "Name = Arun\nAge = 18\nCategory = Adult",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\n#include <string>\nusing namespace std;\n\nclass Person {\nprotected:\n    string name;\npublic:\n    void getName() {\n        name = \"Arun\";\n    }\n};\n\nclass Student public Person {\n    int age;\npublic:\n    void getAge() {\n        age = 18;\n    }\n    void display() {\n        string category;\n        cout << \"Name = \" << studentName << endl;\n        cout << \"Age = \" << age << endl\n        if(age <= 60)\n            category = \"Senior\";\n        else if(age > 18)\n            category = \"Adult\";\n        else\n            category = \"Minor\";\n        cout << \"Category = \" << category << endl;\n    }\n};\n\nint main() {\n    Student s;\n    s.getName();\n    s.getAge();\n    s.display();\n    return 0;\n}",
+        "correctCode": "#include <iostream>\n#include <string>\nusing namespace std;\n\nclass Person {\nprotected:\n    string name;\npublic:\n    void getName() {\n        name = \"Arun\";\n    }\n};\n\nclass Student : public Person {\n    int age;\npublic:\n    void getAge() {\n        age = 18;\n    }\n    void display() {\n        string category;\n        cout << \"Name = \" << name << endl;\n        cout << \"Age = \" << age << endl;\n        if(age >= 60)\n            category = \"Senior\";\n        else if(age >= 18)\n            category = \"Adult\";\n        else\n            category = \"Minor\";\n        cout << \"Category = \" << category << endl;\n    }\n};\n\nint main() {\n    Student s;\n    s.getName();\n    s.getAge();\n    s.display();\n    return 0;\n}",
+        "errorLines": "14,22,23,24,26"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Print Even Numbers using For Loop",
+    "phase": "cpp",
+    "description": "Debug the even number printing program. (logic and syntax).",
+    "points": 200,
+    "expectedOutput": "Even: 2\nEven: 4\nEven: 6\nEven: 8\nEven: 10\nCount = 5\nSum = 30",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int n = 10\n    int count = 0, sum = 0;\n    for(int i = 1; i < n; i++) {\n        if(i % 2 == 1) {\n            cout << \"Even: \" << i << endl;\n            count++;\n            sum = i;\n        }\n    }\n    cout << \"Count = \" << result << endl;\n    cout << \"Sum = \" << sum << endl;\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int n = 10;\n    int count = 0, sum = 0;\n    for(int i = 1; i <= n; i++) {\n        if(i % 2 == 0) {\n            cout << \"Even: \" << i << endl;\n            count++;\n            sum += i;\n        }\n    }\n    cout << \"Count = \" << count << endl;\n    cout << \"Sum = \" << sum << endl;\n    return 0;\n}",
+        "errorLines": "5,7,8,11,14"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Employee Bonus Calculation",
+    "phase": "cpp",
+    "description": "Debug the multiple inheritance payroll program. (logic and syntax).",
+    "points": 200,
+    "expectedOutput": "Salary = 30000\nFinal Salary = 36000",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nclass Employee {\nprotected:\n    int salary;\npublic:\n    void getSalary() {\n        salary = 30000\n    }\n};\n\nclass Bonus {\nprotected:\n    int bonus;\npublic:\n    void getBonus() {\n        bonus = 2000;\n    }\n};\n\nclass Payroll : public Employee public Bonus {\npublic:\n    void calculate() {\n        int total = salary;\n        for(int i = 1; i < 3; i++) {\n            total = total - bonus;\n        }\n        cout << \"Salary = \" << salary << endl;\n        cout << \"Final Salary = \" << finalSalary << endl;\n    }\n};\n\nint main() {\n    Payroll p;\n    p.getSalary();\n    p.getBonus();\n    p.calculate();\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nclass Employee {\nprotected:\n    int salary;\npublic:\n    void getSalary() {\n        salary = 30000;\n    }\n};\n\nclass Bonus {\nprotected:\n    int bonus;\npublic:\n    void getBonus() {\n        bonus = 2000;\n    }\n};\n\nclass Payroll : public Employee, public Bonus {\npublic:\n    void calculate() {\n        int total = salary;\n        for(int i = 1; i <= 3; i++) {\n            total = total + bonus;\n        }\n        cout << \"Salary = \" << salary << endl;\n        cout << \"Final Salary = \" << total << endl;\n    }\n};\n\nint main() {\n    Payroll p;\n    p.getSalary();\n    p.getBonus();\n    p.calculate();\n    return 0;\n}",
+        "errorLines": "9,22,26,27,30"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Student Mark and Grade",
+    "phase": "cpp",
+    "description": "Debug the mark validation and grading program. (logic and syntax).",
+    "points": 300,
+    "expectedOutput": "105 : Invalid Mark\n92 : Grade A\n75 : Grade B\n50 : Grade D\n30 : Fail\nPassed = 3",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\n#include <string>\nusing namespace std;\n\nstring getGrade(int mark) {\n    if(mark < 0 && mark > 100)\n        return \"Invalid Mark\";\n    else if(mark >= 90)\n        return \"Grade A\";\n    else if(mark > 75)\n        return \"Grade B\";\n    else if(mark >= 60)\n        return \"Grade C\";\n    else if(mark >= 50)\n        return \"Grade D\";\n    else\n        return Fail;\n}\n\nint main() {\n    int marks[5] = {105, 92, 75, 50, 30};\n    int passCount = 0;\n    for(int i = 0; i < 5; i++) {\n        string result = getgrade(marks[i]);\n        cout << marks[i] << \" : \" << result << endl\n        if(result != \"Fail\" || result != \"Invalid Mark\")\n            passCount++;\n    }\n    cout << \"Passed = \" << passCount << endl;\n    return 0;\n}",
+        "correctCode": "#include <iostream>\n#include <string>\nusing namespace std;\n\nstring getGrade(int mark) {\n    if(mark < 0 || mark > 100)\n        return \"Invalid Mark\";\n    else if(mark >= 90)\n        return \"Grade A\";\n    else if(mark >= 75)\n        return \"Grade B\";\n    else if(mark >= 60)\n        return \"Grade C\";\n    else if(mark >= 50)\n        return \"Grade D\";\n    else\n        return \"Fail\";\n}\n\nint main() {\n    int marks[5] = {105, 92, 75, 50, 30};\n    int passCount = 0;\n    for(int i = 0; i < 5; i++) {\n        string result = getGrade(marks[i]);\n        cout << marks[i] << \" : \" << result << endl;\n        if(result != \"Fail\" && result != \"Invalid Mark\")\n            passCount++;\n    }\n    cout << \"Passed = \" << passCount << endl;\n    return 0;\n}",
+        "errorLines": "6,10,17,24,25,26"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Student Total and Average",
+    "phase": "cpp",
+    "description": "Debug the total, average and grade program. (logic and syntax).",
+    "points": 300,
+    "expectedOutput": "Total = 401\nAverage = 80.2\nHighest = 90\nGrade B",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int mark[5] = {80, 90, 70, 85, 76}\n    int total = 0;\n    int highest = mark[0];\n    float average;\n    for(int i = 1; i < 5; i++) {\n        total = total + mark[i];\n        if(mark[i] < highest)\n            highest = mark[i];\n    }\n    average = total / 5;\n    cout << \"Total = \" << total << endl\n    cout << \"Average = \" << average << endl;\n    cout << \"Highest = \" << highest << endl;\n    if(average >= 90)\n        cout << \"Grade A\" << endl;\n    else if(average => 75)\n        cout << \"Grade B\" << endl;\n    else if(average >= 50)\n        cout << \"Grade C\" << endl;\n    else\n        cout << \"Fail\" << endl;\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int mark[5] = {80, 90, 70, 85, 76};\n    int total = 0;\n    int highest = mark[0];\n    float average;\n    for(int i = 0; i < 5; i++) {\n        total = total + mark[i];\n        if(mark[i] > highest)\n            highest = mark[i];\n    }\n    average = total / 5.0;\n    cout << \"Total = \" << total << endl;\n    cout << \"Average = \" << average << endl;\n    cout << \"Highest = \" << highest << endl;\n    if(average >= 90)\n        cout << \"Grade A\" << endl;\n    else if(average >= 75)\n        cout << \"Grade B\" << endl;\n    else if(average >= 50)\n        cout << \"Grade C\" << endl;\n    else\n        cout << \"Fail\" << endl;\n    return 0;\n}",
+        "errorLines": "5,9,11,14,15,20"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Sum of Array Elements",
+    "phase": "cpp",
+    "description": "Debug the array sum program that uses a function. (logic and syntax).",
+    "points": 300,
+    "expectedOutput": "Sum = 27\nEven Sum = 6\nOdd Sum = 21",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nint sumArray(int arr[], int size) {\n    int sum = 1;\n    for(int i = 0; i < size - 1; i++)\n        sum = sum + arr[i];\n    return sum\n}\n\nint main() {\n    int a[5] = {4, 9, 2, 7, 5};\n    int total = sumArray(a 5);\n    int evenSum = 0;\n    for(int i = 0; i < 5; i++) {\n        if(a[i] % 2 == 1)\n            evenSum += a[i];\n    }\n    cout << \"Sum = \" << total << endl;\n    cout << \"Even Sum = \" << evenSum << endl;\n    cout << \"Odd Sum = \" << Total - evenSum << endl;\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nint sumArray(int arr[], int size) {\n    int sum = 0;\n    for(int i = 0; i < size; i++)\n        sum = sum + arr[i];\n    return sum;\n}\n\nint main() {\n    int a[5] = {4, 9, 2, 7, 5};\n    int total = sumArray(a, 5);\n    int evenSum = 0;\n    for(int i = 0; i < 5; i++) {\n        if(a[i] % 2 == 0)\n            evenSum += a[i];\n    }\n    cout << \"Sum = \" << total << endl;\n    cout << \"Even Sum = \" << evenSum << endl;\n    cout << \"Odd Sum = \" << total - evenSum << endl;\n    return 0;\n}",
+        "errorLines": "5,6,8,13,16,21"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Bonus Calculation",
+    "phase": "cpp",
+    "description": "Debug the employee bonus, tax and net salary program. (logic and syntax).",
+    "points": 300,
+    "expectedOutput": "Bonus = 5000\nTax = 2500\nNet Salary = 52500",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nclass Employee {\n    float salary;\npublic:\n    void input() {\n        salary = 50000;\n    }\n    float calculateBonus() {\n        return salary + 10 / 100;\n    }\n    float calculateTax() {\n        return Salary * 5 / 100;\n    }\n    void display() {\n        float bonus = calculateBonus();\n        float tax = calculateBonus();\n        float net = salary + bonus + tax;\n        cout << \"Bonus = \" << bonus << endl;\n        cout << \"Tax = \" << tax << endl;\n        cout << \"Net Salary = \" << net << endl\n    }\n};\n\nint main() {\n    Employe e;\n    e.input();\n    e.display();\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nclass Employee {\n    float salary;\npublic:\n    void input() {\n        salary = 50000;\n    }\n    float calculateBonus() {\n        return salary * 10 / 100;\n    }\n    float calculateTax() {\n        return salary * 5 / 100;\n    }\n    void display() {\n        float bonus = calculateBonus();\n        float tax = calculateTax();\n        float net = salary + bonus - tax;\n        cout << \"Bonus = \" << bonus << endl;\n        cout << \"Tax = \" << tax << endl;\n        cout << \"Net Salary = \" << net << endl;\n    }\n};\n\nint main() {\n    Employee e;\n    e.input();\n    e.display();\n    return 0;\n}",
+        "errorLines": "11,14,18,19,22,27"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Shopping Bill",
+    "phase": "cpp",
+    "description": "Debug the shopping bill class program. (logic and syntax).",
+    "points": 300,
+    "expectedOutput": "Total Bill = 1100\nGST = 55\nFinal Amount = 1155",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nclass Bill {\n    int price, quantity;\npublic:\n    void input() {\n        price = 300;\n        quantity = 4;\n    }\n    int calculate() {\n        return price + quantity;\n    }\n    void display() {\n        int total = calculate();\n        if(total < 1000)\n            total = total - 100;\n        else\n            total = total + 50;\n        float gst = total * 5 / 1000.0;\n        cout << \"Total Bill = \" << total << endl\n        cout << \"GST = \" << gst << endl;\n        cout << \"Final Amount = \" << total + Gst << endl;\n    }\n};\n\nint main() {\n    bill b;\n    b.input();\n    b.display();\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nclass Bill {\n    int price, quantity;\npublic:\n    void input() {\n        price = 300;\n        quantity = 4;\n    }\n    int calculate() {\n        return price * quantity;\n    }\n    void display() {\n        int total = calculate();\n        if(total > 1000)\n            total = total - 100;\n        else\n            total = total + 50;\n        float gst = total * 5 / 100.0;\n        cout << \"Total Bill = \" << total << endl;\n        cout << \"GST = \" << gst << endl;\n        cout << \"Final Amount = \" << total + gst << endl;\n    }\n};\n\nint main() {\n    Bill b;\n    b.input();\n    b.display();\n    return 0;\n}",
+        "errorLines": "12,16,20,21,23,28"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Reverse a String",
+    "phase": "cpp",
+    "description": "Debug the string reverse and palindrome program. (logic and syntax).",
+    "points": 300,
+    "expectedOutput": "Reverse = olleh\nLength = 5\nNot a Palindrome",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\n#include <string>\nusing namespace std;\n\nstring reverseText(string s) {\n    string rev = \"\"\n    for(int i = s.length(); i >= 0; i--) {\n        rev = s[i] + rev;\n    }\n    retrun rev;\n}\n\nbool isPalindrome(string s) {\n    return s != reverseText(s);\n}\n\nint main() {\n    string text = \"hello\";\n    string rev = reverseText(text);\n    cout << \"Reverse = \" << rev << endl;\n    cout << \"Length = \" << length << endl;\n    if(isPalindrome(text))\n        cout << \"Palindrome\" << endl;\n    else\n        cout << \"Not a Palindrome\" << endl;\n    return 0;\n}",
+        "correctCode": "#include <iostream>\n#include <string>\nusing namespace std;\n\nstring reverseText(string s) {\n    string rev = \"\";\n    for(int i = s.length() - 1; i >= 0; i--) {\n        rev = rev + s[i];\n    }\n    return rev;\n}\n\nbool isPalindrome(string s) {\n    return s == reverseText(s);\n}\n\nint main() {\n    string text = \"hello\";\n    string rev = reverseText(text);\n    cout << \"Reverse = \" << rev << endl;\n    cout << \"Length = \" << text.length() << endl;\n    if(isPalindrome(text))\n        cout << \"Palindrome\" << endl;\n    else\n        cout << \"Not a Palindrome\" << endl;\n    return 0;\n}",
+        "errorLines": "6,7,8,10,14,21"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Simple Menu Program",
+    "phase": "cpp",
+    "description": "Debug the switch-case calculator program. (logic and syntax).",
+    "points": 300,
+    "expectedOutput": "Choice 1 : 16\nChoice 2 : 8\nChoice 3 : 48\nChoice 4 : 3",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nint calculate(int choice, int a, int b) {\n    int result = 0;\n    switch(choice) {\n        case 1:\n            result = a - b;\n            break;\n        case 2\n            result = a - b;\n            break;\n        case 3:\n            result = a * b\n\n        case 4:\n            result = a % b;\n            break;\n        default:\n            cout << \"Invalid choice\" << endl;\n    }\n    return result;\n}\n\nint main() {\n    int a = 12, b = 4;\n    for(int choice = 1; choice <= 4; choice++) {\n        calculate(choice, a b) << endl;\n    }\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nint calculate(int choice, int a, int b) {\n    int result = 0;\n    switch(choice) {\n        case 1:\n            result = a + b;\n            break;\n        case 2:\n            result = a - b;\n            break;\n        case 3:\n            result = a * b;\n            break;\n        case 4:\n            result = a / b;\n            break;\n        default:\n            cout << \"Invalid choice\" << endl;\n    }\n    return result;\n}\n\nint main() {\n    int a = 12, b = 4;\n    for(int choice = 1; choice <= 4; choice++) {\n        cout << \"Choice \" << choice << \" : \" << calculate(choice, a, b) << endl;\n    }\n    return 0;\n}",
+        "errorLines": "8,10,14,15,17,28"
+      }
+    }
+  },
+  {
+    "title": "C++ Bug: Rectangle Area using Constructor",
+    "phase": "cpp",
+    "description": "Debug the rectangle constructor program. (logic and syntax).",
+    "points": 300,
+    "expectedOutput": "Area = 50\nPerimeter = 30\nRectangle",
+    "variants": {
+      "cpp": {
+        "initialCode": "#include <iostream>\nusing namespace std;\n\nclass Rectangle {\n    int length, breadth;\npublc:\n    Rectangle(int l, int b) {\n        length = l\n        breadth = l;\n    }\n    int area() {\n        return length + breadth;\n    }\n    int perimeter() {\n        return 2 * length + breadth;\n    }\n    void display() {\n        cout << \"Area = \" << area() << endl;\n        cout << \"Perimeter = \" << result << endl;\n        if(length == breadth)\n            cout << \"Square\" << endl;\n        else\n            cout << \"Rectangle\" << endl;\n    }\n};\n\nint main() {\n    Rectangle r(10, 5);\n    r.display();\n    return 0;\n}",
+        "correctCode": "#include <iostream>\nusing namespace std;\n\nclass Rectangle {\n    int length, breadth;\npublic:\n    Rectangle(int l, int b) {\n        length = l;\n        breadth = b;\n    }\n    int area() {\n        return length * breadth;\n    }\n    int perimeter() {\n        return 2 * (length + breadth);\n    }\n    void display() {\n        cout << \"Area = \" << area() << endl;\n        cout << \"Perimeter = \" << perimeter() << endl;\n        if(length == breadth)\n            cout << \"Square\" << endl;\n        else\n            cout << \"Rectangle\" << endl;\n    }\n};\n\nint main() {\n    Rectangle r(10, 5);\n    r.display();\n    return 0;\n}",
+        "errorLines": "6,8,9,12,15,19"
+      }
+    }
+  }
+]
