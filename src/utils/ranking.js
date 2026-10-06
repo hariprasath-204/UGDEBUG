@@ -10,8 +10,8 @@
 export function sortParticipants(users) {
   return [...users].sort((a, b) => {
     // 0. Tab switches penalty: any tab switch (> 0) pushes participant behind clean participants
-    const aTabs = (a.tabSwitches || 0) > 0 ? 1 : 0;
-    const bTabs = (b.tabSwitches || 0) > 0 ? 1 : 0;
+    const aTabs = (a.tab_switches ?? a.tabSwitches ?? 0) > 0 ? 1 : 0;
+    const bTabs = (b.tab_switches ?? b.tabSwitches ?? 0) > 0 ? 1 : 0;
     if (aTabs !== bTabs) {
       return aTabs - bTabs; // 0 (no tab switches) comes before 1 (has tab switches)
     }
@@ -23,16 +23,16 @@ export function sortParticipants(users) {
       return bScore - aScore;
     }
 
-    // 2. Number of executions (totalSubmissionsCount) - fewer executions first
-    const aSubs = a.totalSubmissionsCount || 0;
-    const bSubs = b.totalSubmissionsCount || 0;
+    // 2. Number of executions (totalSubmissionsCount / total_submissions_count) - fewer executions first
+    const aSubs = a.total_submissions_count ?? a.totalSubmissionsCount ?? 0;
+    const bSubs = b.total_submissions_count ?? b.totalSubmissionsCount ?? 0;
     if (aSubs !== bSubs) {
       return aSubs - bSubs;
     }
 
-    // 3. Total timing consumed (elapsedTimeMs) - faster time first
-    const aTime = a.elapsedTimeMs || Infinity;
-    const bTime = b.elapsedTimeMs || Infinity;
+    // 3. Total timing consumed (elapsedTimeMs / elapsed_time_ms) - faster time first
+    const aTime = a.elapsed_time_ms ?? a.elapsedTimeMs ?? Infinity;
+    const bTime = b.elapsed_time_ms ?? b.elapsedTimeMs ?? Infinity;
     return aTime - bTime;
   });
 }
@@ -50,4 +50,3 @@ export function getStudentCategory(rollNo) {
 export function getSortedParticipantsByCategory(users, category = 'UG') {
   return sortParticipants(users);
 }
-

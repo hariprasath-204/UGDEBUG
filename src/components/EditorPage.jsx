@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Editor from "@monaco-editor/react";
 import axios from 'axios';
-import { db } from '../firebase';
-import { doc, getDoc, getDocs, collection, updateDoc, increment, onSnapshot } from 'firebase/firestore';
+import { supabase } from '../supabase';
 import LoadingOverlay from './LoadingOverlay';
 import PopupMessage from './PopupMessage';
 import { syncClock, getNow } from '../utils/timeSync';
@@ -22,10 +21,8 @@ const EditorPage = () => {
 
   const userId = localStorage.getItem('debugEventUserId');
   const userName = localStorage.getItem('debugEventUserName');
-  const phaseMap = { easy: 'cpp', medium: 'cpp', hard: 'cpp', c: 'cpp', cpp: 'cpp' };
   const activeLanguage = 'cpp';
 
-  const [violations, setViolations] = useState({ tabSwitches: 0, copyPasteCount: 0 });
   const [onlineCompilerKeys, setOnlineCompilerKeys] = useState([]);
 
   const cheatingRef = useRef({ tabSwitches: 0, copyPasteCount: 0 });
@@ -39,7 +36,6 @@ const EditorPage = () => {
   const questionStartTimeRef = useRef(null);
   const hasSubmittedRef = useRef(false);
   const timerIntervalRef = useRef(null);
-  const lastSavedCodeRef = useRef('');
 
   // Sync state to refs for auto-save and submission closures
   useEffect(() => {
@@ -56,20 +52,53 @@ const EditorPage = () => {
       return;
     }
 
-    // 1. Fetch Question
+    // 1. Fetch Question from Supabase
     const fetchQuestion = async () => {
       try {
         let targetQuestion = null;
         if (questionId && questionId !== 'default_question') {
-          const docSnap = await getDoc(doc(db, "questions", questionId));
-          if (docSnap.exists()) {
-            targetQuestion = { id: docSnap.id, ...docSnap.data() };
+          const { data: qData } = await supabase
+            .from('questions')
+            .select('*')
+            .eq('id', questionId)
+            .single();
+
+          if (qData) {
+            targetQuestion = {
+              id: qData.id,
+              title: qData.title,
+              description: qData.description,
+              category: qData.category,
+              phase: qData.phase || 'cpp',
+              points: qData.points || 100,
+              expectedOutput: qData.expected_output || qData.expectedOutput,
+              initialCode: qData.initial_code || qData.initialCode,
+              correctCode: qData.correct_code || qData.correctCode,
+              errorLines: qData.error_lines || qData.errorLines,
+              variants: qData.variants || {}
+            };
           }
         } else {
-          const querySnapshot = await getDocs(collection(db, "questions"));
-          if (!querySnapshot.empty) {
-            const docSnap = querySnapshot.docs[0];
-            targetQuestion = { id: docSnap.id, ...docSnap.data() };
+          const { data: qList } = await supabase
+            .from('questions')
+            .select('*')
+            .limit(1);
+
+          if (qList && qList.length > 0) {
+            const qData = qList[0];
+            targetQuestion = {
+              id: qData.id,
+              title: qData.title,
+              description: qData.description,
+              category: qData.category,
+              phase: qData.phase || 'cpp',
+              points: qData.points || 100,
+              expectedOutput: qData.expected_output || qData.expectedOutput,
+              initialCode: qData.initial_code || qData.initialCode,
+              correctCode: qData.correct_code || qData.correctCode,
+              errorLines: qData.error_lines || qData.errorLines,
+              variants: qData.variants || {}
+            };
           }
         }
 
@@ -81,16 +110,20 @@ const EditorPage = () => {
 
           // Record or retrieve start time for this question
           try {
-            const uSnap = await getDoc(doc(db, 'users', userId));
+            const { data: uData } = await supabase
+              .from('users')
+              .select('question_start_times')
+              .eq('id', userId)
+              .single();
+
             let qStartTime = null;
-            if (uSnap.exists()) {
-              const uData = uSnap.data();
-              qStartTime = uData.questionStartTimes?.[targetQuestion.id];
+            if (uData) {
+              const startTimes = uData.question_start_times || {};
+              qStartTime = startTimes[targetQuestion.id];
               if (!qStartTime) {
                 qStartTime = new Date().toISOString();
-                updateDoc(doc(db, 'users', userId), {
-                  [`questionStartTimes.${targetQuestion.id}`]: qStartTime
-                }).catch(() => {});
+                startTimes[targetQuestion.id] = qStartTime;
+                await supabase.from('users').update({ question_start_times: startTimes }).eq('id', userId);
               }
             }
             questionStartTimeRef.current = qStartTime || new Date().toISOString();
@@ -104,20 +137,24 @@ const EditorPage = () => {
                               targetQuestion.initialCode ||
                               '// No code provided.';
 
-          // 1. Check local storage draft first
+          // Check local storage draft first
           let localDraft = localStorage.getItem(`codathan_draft_${userId}_${targetQuestion.id}`);
           if (localDraft === '// Loading...' || localDraft === '// Mission not found.') localDraft = null;
 
-          // 2. Also check Firestore user draft
+          // Also check Supabase user draft
           let remoteDraft = null;
           try {
-            const uSnap = await getDoc(doc(db, 'users', userId));
-            if (uSnap.exists()) {
-              const uData = uSnap.data();
+            const { data: uData } = await supabase
+              .from('users')
+              .select('drafts, current_code, is_finished')
+              .eq('id', userId)
+              .single();
+
+            if (uData) {
               if (uData.drafts && uData.drafts[targetQuestion.id]) {
                 remoteDraft = uData.drafts[targetQuestion.id];
-              } else if (uData.currentCode && uData.currentCode !== initialCode && !uData.isFinished) {
-                remoteDraft = uData.currentCode;
+              } else if (uData.current_code && uData.current_code !== initialCode && !uData.is_finished) {
+                remoteDraft = uData.current_code;
               }
             }
           } catch (e) {
@@ -138,26 +175,23 @@ const EditorPage = () => {
     // Synchronize client clock with server
     syncClock();
 
-    // 2. Listen to Event Timer
-    const eventDocRef = doc(db, 'settings', 'event');
-    const unsubEvent = onSnapshot(eventDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.status === 'ended' || data.status === 'stopped') {
-          // Admin stopped event -> go to Thank You page
-          if (!hasSubmittedRef.current && handleSubmitRef.current) {
-            handleSubmitRef.current(true, '/thank-you');
-          }
-        } else if (data.status === 'active' && data.endTime) {
+    // 2. Listen to Event Timer from Supabase
+    const fetchInitialSettings = async () => {
+      const { data: eventRow } = await supabase
+        .from('settings')
+        .select('data')
+        .eq('id', 'event')
+        .single();
+
+      if (eventRow?.data) {
+        const data = eventRow.data;
+        if (data.status === 'active' && data.endTime) {
           if (data.startTime) eventStartTimeRef.current = data.startTime;
-          // Setup timer
           const end = new Date(data.endTime).getTime();
           if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
           const updateTimer = () => {
             if (isNaN(end) || end <= 0) return;
-            const now = getNow();
-            const distance = end - now;
-            
+            const distance = end - getNow();
             if (distance <= 0) {
               setTimeLeft("00:00");
               if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
@@ -174,15 +208,65 @@ const EditorPage = () => {
           timerIntervalRef.current = setInterval(updateTimer, 1000);
         }
       }
-    });
 
-    // Listen to custom OnlineCompiler.io API keys
-    const compilerDocRef = doc(db, 'settings', 'onlinecompiler');
-    const unsubCompiler = onSnapshot(compilerDocRef, (docSnap) => {
-      if (docSnap.exists() && Array.isArray(docSnap.data()?.keys)) {
-        setOnlineCompilerKeys(docSnap.data().keys);
+      // Fetch custom compiler keys
+      const { data: compRow } = await supabase
+        .from('settings')
+        .select('data')
+        .eq('id', 'onlinecompiler')
+        .single();
+      if (compRow?.data?.keys && Array.isArray(compRow.data.keys)) {
+        setOnlineCompilerKeys(compRow.data.keys);
       }
-    });
+    };
+    fetchInitialSettings();
+
+    // Realtime subscription on settings table
+    const settingsChannel = supabase
+      .channel('editor:settings')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'settings' },
+        (payload) => {
+          const row = payload.new;
+          if (!row) return;
+          const data = row.data || {};
+
+          if (row.id === 'event') {
+            if (data.status === 'ended' || data.status === 'stopped') {
+              if (!hasSubmittedRef.current && handleSubmitRef.current) {
+                handleSubmitRef.current(true, '/thank-you');
+              }
+            } else if (data.status === 'active' && data.endTime) {
+              if (data.startTime) eventStartTimeRef.current = data.startTime;
+              const end = new Date(data.endTime).getTime();
+              if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+              const updateTimer = () => {
+                if (isNaN(end) || end <= 0) return;
+                const distance = end - getNow();
+                if (distance <= 0) {
+                  setTimeLeft("00:00");
+                  if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+                  if (!hasSubmittedRef.current && handleSubmitRef.current) {
+                    handleSubmitRef.current(true, '/timer-finished');
+                  }
+                } else {
+                  const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                  const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                  setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+                }
+              };
+              updateTimer();
+              timerIntervalRef.current = setInterval(updateTimer, 1000);
+            }
+          } else if (row.id === 'onlinecompiler') {
+            if (Array.isArray(data.keys)) {
+              setOnlineCompilerKeys(data.keys);
+            }
+          }
+        }
+      )
+      .subscribe();
 
     // 3. Anti-cheating & Fullscreen Listeners
     const handleVisibilityChange = async () => {
@@ -190,10 +274,17 @@ const EditorPage = () => {
         cheatingRef.current.tabSwitches += 1;
         setPopup({ message: "WARNING: Tab switching detected! Penalty: -2 Points deducted.", type: "warning" });
         if (userId) {
-          await updateDoc(doc(db, 'users', userId), { 
-            tabSwitches: increment(1),
-            score: increment(-2)
-          });
+          try {
+            const { data: uData } = await supabase.from('users').select('tab_switches, score').eq('id', userId).single();
+            if (uData) {
+              await supabase.from('users').update({
+                tab_switches: (uData.tab_switches || 0) + 1,
+                score: (uData.score || 0) - 2
+              }).eq('id', userId);
+            }
+          } catch (e) {
+            console.error("Error updating tab switch penalty:", e);
+          }
         }
       }
     };
@@ -203,7 +294,16 @@ const EditorPage = () => {
       setPopup({ message: "WARNING: Copy/Pasting is strictly prohibited!", type: "warning" });
       e.preventDefault();
       if (userId) {
-        await updateDoc(doc(db, 'users', userId), { copyPasteCount: increment(1) });
+        try {
+          const { data: uData } = await supabase.from('users').select('copy_paste_count').eq('id', userId).single();
+          if (uData) {
+            await supabase.from('users').update({
+              copy_paste_count: (uData.copy_paste_count || 0) + 1
+            }).eq('id', userId);
+          }
+        } catch (e) {
+          console.error("Error updating copy paste count:", e);
+        }
       }
     };
 
@@ -212,8 +312,7 @@ const EditorPage = () => {
     document.addEventListener("copy", handleCopyPaste);
 
     return () => {
-      unsubEvent();
-      unsubCompiler();
+      supabase.removeChannel(settingsChannel);
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       document.removeEventListener("paste", handleCopyPaste);
@@ -221,36 +320,41 @@ const EditorPage = () => {
     };
   }, [userId, navigate, activeLanguage]);
 
-
   const handleResetCode = () => {
     if (!question) return;
-    if (window.confirm("Are you sure you want to reset your code back to the original buggy template? Any unsaved edits will be discarded.")) {
-      const initialCode = question.variants?.[activeLanguage]?.initialCode ||
-                         question.variants?.c?.initialCode ||
-                         question.variants?.cpp?.initialCode ||
-                         question.initialCode ||
-                         '';
-      setCode(initialCode);
-      if (userId && question.id) {
-        localStorage.removeItem(`codathan_draft_${userId}_${question.id}`);
+    setPopup({
+      message: "Are you sure you want to reset your code back to the original buggy template? Any unsaved edits will be discarded.",
+      type: "warning",
+      onConfirm: () => {
+        const initialCode = question.variants?.[activeLanguage]?.initialCode ||
+                           question.variants?.c?.initialCode ||
+                           question.variants?.cpp?.initialCode ||
+                           question.initialCode ||
+                           '';
+        setCode(initialCode);
+        if (userId && question.id) {
+          localStorage.removeItem(`codathan_draft_${userId}_${question.id}`);
+        }
+        setPopup({ message: "Code reset to original buggy template.", type: "info" });
       }
-      setPopup({ message: "Code reset to original buggy template.", type: "info" });
-    }
+    });
   };
 
   const compileCode = async () => {
     setIsCompiling(true);
     setOutput('Compiling code...');
     
-    // Key pool available for failover
+    // 5 custom free trial keys + Firestore/Supabase dynamic keys
     const candidateKeys = [
       ...onlineCompilerKeys,
+      'a6ed2c1539a350079a242c2c2deecc36',
       'ccb79ad09699924cb025d0ba0b6690ed',
-      '28152502bdcf827c763a92f0bf7ed806',
-      '42084204b0195f78ed851ac35c43a059'
+      '8471946023c357608b7666f763b66d9e',
+      '00f2e3686a1712e01b8fa42d4ff76635',
+      '31f89d72d1ae6013e4925c06bac75502'
     ].filter(Boolean);
 
-    const compilerName = (activeLanguage === 'c' || activeLanguage === 'gcc-head-c') ? 'gcc-15' : 'g++-15';
+    const compilerName = 'g++-15';
 
     try {
       // 1. Direct OnlineCompiler.io execution with client-side key failover
@@ -293,8 +397,8 @@ const EditorPage = () => {
             checkStr.includes('unauthorized') ||
             checkStr.includes('invalid api key')
           ) {
-            console.warn(`Direct OnlineCompiler key (${key.slice(0, 6)}...) limit finished, switching to next key...`);
-            continue; // Next key
+            console.warn(`Direct OnlineCompiler key (${key.slice(0, 6)}...) limit reached, switching to next key...`);
+            continue;
           }
 
           if (
@@ -365,9 +469,21 @@ const EditorPage = () => {
 
     if (!targetQuestion && targetQId) {
       try {
-        const qDoc = await getDoc(doc(db, "questions", targetQId));
-        if (qDoc.exists()) {
-          targetQuestion = { id: qDoc.id, ...qDoc.data() };
+        const { data: qDoc } = await supabase.from('questions').select('*').eq('id', targetQId).single();
+        if (qDoc) {
+          targetQuestion = {
+            id: qDoc.id,
+            title: qDoc.title,
+            description: qDoc.description,
+            category: qDoc.category,
+            phase: qDoc.phase || 'cpp',
+            points: qDoc.points || 100,
+            expectedOutput: qDoc.expected_output || qDoc.expectedOutput,
+            initialCode: qDoc.initial_code || qDoc.initialCode,
+            correctCode: qDoc.correct_code || qDoc.correctCode,
+            errorLines: qDoc.error_lines || qDoc.errorLines,
+            variants: qDoc.variants || {}
+          };
           questionRef.current = targetQuestion;
         }
       } catch (e) {
@@ -385,7 +501,7 @@ const EditorPage = () => {
     if (targetQuestion?.variants && targetQuestion.variants[activeLanguage]) {
       langCorrectCode = targetQuestion.variants[activeLanguage].correctCode || '';
     } else {
-      langCorrectCode = targetQuestion?.correctCode || '';
+      langCorrectCode = targetQuestion?.correctCode || targetQuestion?.correct_code || '';
     }
 
     const correctLines = langCorrectCode.split('\n').filter(line => line.trim() !== '').length;
@@ -399,13 +515,13 @@ const EditorPage = () => {
       }
     }
     if (!currentCodeValue || currentCodeValue === '// Loading...' || currentCodeValue === '// Mission not found.') {
-      currentCodeValue = targetQuestion?.variants?.[activeLanguage]?.initialCode || targetQuestion?.initialCode || '';
+      currentCodeValue = targetQuestion?.variants?.[activeLanguage]?.initialCode || targetQuestion?.initialCode || targetQuestion?.initial_code || '';
     }
 
     const userLines = currentCodeValue.split('\n').filter(line => line.trim() !== '').length;
     
     const normalizedUserOutput = (userOutput || '').trim();
-    const normalizedExpected = (targetQuestion?.expectedOutput || '').trim();
+    const normalizedExpected = (targetQuestion?.expectedOutput || targetQuestion?.expected_output || '').trim();
     const isOutputCorrect = normalizedExpected.length > 0 && normalizedUserOutput === normalizedExpected;
 
     if (!targetUrl && !isOutputCorrect) {
@@ -419,7 +535,7 @@ const EditorPage = () => {
     const calcErrorsForCode = (targetQ, userCode, lang = 'cpp') => {
       if (!targetQ) return { total: 1, cleared: 0, ptsPerErr: 100 };
       const v = targetQ.variants?.[lang] || targetQ.variants?.cpp || targetQ.variants?.c || {};
-      const rawErrorStr = String(v.errorLines || targetQ.errorLines || '');
+      const rawErrorStr = String(v.errorLines || targetQ.error_lines || targetQ.errorLines || '');
       const groups = rawErrorStr
         .split(',')
         .map(g => g.split('|').map(n => parseInt(n.trim())).filter(n => !isNaN(n)))
@@ -427,8 +543,7 @@ const EditorPage = () => {
       
       const total = Math.max(1, groups.length || (v.errorLinesArray?.length || 1));
       const ptsPerErr = +(100 / total).toFixed(2);
-      
-      const initialCode = v.initialCode || targetQ.initialCode || '';
+      const initialCode = v.initialCode || targetQ.initial_code || targetQ.initialCode || '';
       const initialLines = initialCode.split('\n');
       const userLinesArr = (userCode || '').split('\n');
       
@@ -483,23 +598,20 @@ const EditorPage = () => {
     };
 
     try {
-      const userDocSnap = await getDoc(doc(db, 'users', userId));
-      let userData = {};
-      if (userDocSnap.exists()) {
-        userData = userDocSnap.data();
-      }
+      const { data: userDocData } = await supabase.from('users').select('*').eq('id', userId).single();
+      const userData = userDocData || {};
 
-      const completedQs = userData.completedQuestions || [];
+      const completedQs = userData.completed_questions || userData.completedQuestions || [];
       const newCompletedQs = completedQs.includes(targetQId) ? completedQs : [...completedQs, targetQId];
       
-      const prevFinalCode = userData.finalCode || '';
+      const prevFinalCode = userData.final_code || userData.finalCode || '';
       const newFinalCode = prevFinalCode + `\n\n// ====== MISSION: ${targetQuestion?.title || targetQId} ======\n` + currentCodeValue;
       
       const finalClearedErrors = (isOutputCorrect || evalCleared === evalTotal) ? evalTotal : evalCleared;
       const finalTotalErrors = evalTotal;
 
-      const newCumulCleared = (userData.cumulativeClearedErrors || 0) + finalClearedErrors;
-      const newCumulTotal = (userData.cumulativeTotalErrors || 0) + finalTotalErrors;
+      const newCumulCleared = (userData.cumulative_cleared_errors || 0) + finalClearedErrors;
+      const newCumulTotal = (userData.cumulative_total_errors || 0) + finalTotalErrors;
 
       const prevSubmissions = userData.submissions || {};
       const submissionData = {
@@ -522,21 +634,21 @@ const EditorPage = () => {
         isAutoSubmitted: Boolean(targetUrl)
       };
 
-      const prevElapsed = userData.elapsedTimeMs || 0;
+      const prevElapsed = userData.elapsed_time_ms || userData.elapsedTimeMs || 0;
       const newElapsed = prevElapsed + takenTimeMs;
-      const prevSubmissionsCount = userData.totalSubmissionsCount || 0;
-      const prevLangSubmissions = userData.langSubmissionsCount || { c: 0, cpp: 0 };
+      const prevSubmissionsCount = userData.total_submissions_count || userData.totalSubmissionsCount || 0;
+      const prevLangSubmissions = userData.lang_submissions_count || userData.langSubmissionsCount || { c: 0, cpp: 0 };
       const currentPhase = targetQuestion?.phase || 'cpp';
 
       const updatePayload = {
-        score: increment(score),
-        finalCode: newFinalCode,
-        elapsedTimeMs: newElapsed,
-        completedQuestions: newCompletedQs,
-        cumulativeClearedErrors: newCumulCleared,
-        cumulativeTotalErrors: newCumulTotal,
-        totalSubmissionsCount: prevSubmissionsCount + 1,
-        langSubmissionsCount: {
+        score: (userData.score || 0) + score,
+        final_code: newFinalCode,
+        elapsed_time_ms: newElapsed,
+        completed_questions: newCompletedQs,
+        cumulative_cleared_errors: newCumulCleared,
+        cumulative_total_errors: newCumulTotal,
+        total_submissions_count: prevSubmissionsCount + 1,
+        lang_submissions_count: {
           ...prevLangSubmissions,
           [currentPhase]: (prevLangSubmissions[currentPhase] || 0) + 1
         },
@@ -544,22 +656,15 @@ const EditorPage = () => {
           ...prevSubmissions,
           [targetQId]: submissionData
         },
-        currentCode: '',
-        clearedErrors: 0,
-        totalErrors: 0,
-        remainingErrors: 0,
-        currentLinesCount: 0,
-        targetLinesCount: 0
+        current_code: '',
+        selected_question_id: null
       };
 
       if (targetUrl) {
-        updatePayload.isFinished = true;
-        updatePayload.selectedQuestionId = null;
-      } else {
-        updatePayload.selectedQuestionId = null;
+        updatePayload.is_finished = true;
       }
 
-      await updateDoc(doc(db, 'users', userId), updatePayload);
+      await supabase.from('users').update(updatePayload).eq('id', userId);
 
       if (userId && targetQId) {
         localStorage.removeItem(`codathan_draft_${userId}_${targetQId}`);
@@ -600,8 +705,8 @@ const EditorPage = () => {
     } else if (Array.isArray(v.errorLinesArray)) {
       errorGroups = v.errorLinesArray.map(n => [n]);
     }
-  } else if (question && question.errorLines) {
-    errorGroups = String(question.errorLines)
+  } else if (question && (question.error_lines || question.errorLines)) {
+    errorGroups = String(question.error_lines || question.errorLines)
       .split(',')
       .map(group => group.split('|').map(n => parseInt(n.trim())).filter(n => !isNaN(n)))
       .filter(group => group.length > 0);
@@ -616,7 +721,7 @@ const EditorPage = () => {
     if (question.variants && question.variants[activeLanguage]) {
       initialCode = question.variants[activeLanguage].initialCode || '';
     } else {
-      initialCode = question.initialCode || '';
+      initialCode = question.initial_code || question.initialCode || '';
     }
     const initialLines = initialCode.split('\n');
     const currentLines = code.split('\n');
@@ -644,7 +749,7 @@ const EditorPage = () => {
     if (question.variants && question.variants[activeLanguage]) {
       correctCode = question.variants[activeLanguage].correctCode || '';
     } else {
-      correctCode = question.correctCode || '';
+      correctCode = question.correct_code || question.correctCode || '';
     }
     targetLinesCount = correctCode.split('\n').filter(line => line.trim() !== '').length;
   }
@@ -658,20 +763,18 @@ const EditorPage = () => {
     targetLinesCount
   };
 
-  // Live real-time sync of error fixing and points to Firestore for Admin Dashboard
+  // Live real-time sync of error fixing and drafts to Supabase for Admin Dashboard
   useEffect(() => {
     if (!userId || !question?.id || isSubmitting) return;
 
-    const timer = setTimeout(() => {
-      updateDoc(doc(db, 'users', userId), {
-        selectedQuestionId: question.id,
-        currentQuestionTitle: question.title || '',
-        clearedErrors: clearedErrors,
-        totalErrors: Math.max(1, totalErrors),
-        remainingErrors: Math.max(0, totalErrors - clearedErrors),
-        currentCode: code
-      }).catch(() => {});
-    }, 350);
+    const timer = setTimeout(async () => {
+      try {
+        await supabase.from('users').update({
+          selected_question_id: question.id,
+          current_code: code
+        }).eq('id', userId);
+      } catch (e) {}
+    }, 450);
 
     return () => clearTimeout(timer);
   }, [userId, question?.id, clearedErrors, totalErrors, code, isSubmitting]);
@@ -679,7 +782,7 @@ const EditorPage = () => {
   return (
     <>
       <LoadingOverlay isLoading={!question || isSubmitting} />
-      {popup && <PopupMessage message={popup.message} type={popup.type} onClose={() => setPopup(null)} />}
+      {popup && <PopupMessage message={popup.message} type={popup.type} onClose={() => setPopup(null)} onConfirm={popup.onConfirm} />}
       <div ref={editorContainerRef} style={{ display: 'flex', flexDirection: 'column', height: '90vh' }}>
       
 
@@ -687,19 +790,19 @@ const EditorPage = () => {
         <h2 className="glow-text-red" style={{ margin: 0 }}>DEBUGGING ARENA</h2>
         
         {timeLeft && (
-          <div style={{ background: '#ff003c', color: '#ffffff', padding: '5px 15px', borderRadius: '4px', fontWeight: 'bold', fontSize: '1.2rem', fontFamily: 'var(--font-mono)', boxShadow: '0 0 15px rgba(255, 0, 60, 0.5)' }}>
+          <div style={{ background: 'linear-gradient(135deg, #de0606 0%, #ac0202 100%)', color: '#ffffff', padding: '5px 15px', borderRadius: '4px', fontWeight: 'bold', fontSize: '1.2rem', fontFamily: 'var(--font-mono)', boxShadow: '0 0 15px rgba(222, 6, 6, 0.55)' }}>
             TIME REMAINING: {timeLeft}
           </div>
         )}
 
-        <div style={{ color: '#ffffff', fontFamily: 'var(--font-heading)', fontSize: '0.9rem' }}>PARTICIPANT: <span style={{ color: '#ff003c', fontWeight: 'bold' }}>{userName}</span></div>
+        <div style={{ color: '#ffffff', fontFamily: 'var(--font-heading)', fontSize: '0.9rem' }}>PARTICIPANT: <span style={{ color: '#de0606', fontWeight: 'bold' }}>{userName}</span></div>
       </div>
 
       <div style={{ display: 'flex', gap: '1rem', flex: 1, padding: '1rem', overflow: 'hidden' }}>
         {/* Left Panel: Question Info */}
-        <div className="glass-panel" style={{ flex: '0 0 35%', padding: '1.5rem', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+        <div className="glass-panel" style={{ flex: '0 0 35%', padding: '1.5rem', display: 'flex', flexDirection: 'column', overflowY: 'auto', border: '1px solid #3f3f3f' }}>
           <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontFamily: 'var(--font-heading)', fontSize: '1.5rem' }}>{question?.title || 'Loading...'}</h3>
-          <span style={{ display: 'inline-block', marginBottom: '1.5rem', fontSize: '0.8rem', color: '#ff003c', border: '1px solid #ff003c', background: 'rgba(255, 0, 60, 0.08)', padding: '2px 8px', borderRadius: '12px', textTransform: 'uppercase', alignSelf: 'flex-start' }}>
+          <span style={{ display: 'inline-block', marginBottom: '1.5rem', fontSize: '0.8rem', color: '#007fd7', border: '1px solid #007fd7', background: 'rgba(0, 127, 215, 0.1)', padding: '2px 8px', borderRadius: '12px', textTransform: 'uppercase', alignSelf: 'flex-start' }}>
             STAGE: C++ DEBUGGING MISSION
           </span>
           
@@ -708,9 +811,9 @@ const EditorPage = () => {
           ) : null}
           
           <div style={{ marginTop: 'auto' }}>
-            <h4 style={{ color: '#ff003c', marginBottom: '0.5rem', fontFamily: 'var(--font-heading)' }}>EXPECTED OUTPUT</h4>
-            <pre style={{ background: 'var(--bg-deep-navy)', padding: '1rem', borderRadius: '4px', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
-              {question?.expectedOutput}
+            <h4 style={{ color: '#de0606', marginBottom: '0.5rem', fontFamily: 'var(--font-heading)' }}>EXPECTED OUTPUT</h4>
+            <pre style={{ background: 'var(--bg-deep-navy)', padding: '1rem', borderRadius: '4px', color: 'var(--text-secondary)', border: '1px solid #3f3f3f' }}>
+              {question?.expectedOutput || question?.expected_output}
             </pre>
           </div>
         </div>
@@ -719,23 +822,23 @@ const EditorPage = () => {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'hidden' }}>
           
           {/* Top: Editor */}
-          <div className="glass-panel" style={{ flex: 2, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div className="glass-panel" style={{ flex: 2, display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid #3f3f3f' }}>
             <div style={{ padding: '0.5rem 1rem', background: 'var(--bg-panel-hover)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)' }}>
               
               <div style={{ color: '#ffffff', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: 'var(--font-heading)', fontSize: '0.9rem' }}>
-                <span style={{ color: '#ff003c', marginRight: '6px' }}>●</span>
+                <span style={{ color: '#de0606', marginRight: '6px' }}>●</span>
                 C++ CODE ENVIRONMENT
               </div>
 
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button onClick={handleResetCode} className="btn-secondary" style={{ padding: '5px 12px', fontSize: '0.8rem', color: '#ff4d6d', borderColor: 'rgba(255, 0, 60, 0.4)' }} title="Reset to original buggy code">
+                <button onClick={handleResetCode} className="btn-secondary" style={{ padding: '5px 12px', fontSize: '0.8rem', color: '#e2e2e2', borderColor: '#3f3f3f' }} title="Reset to original buggy code">
                   RESET CODE
                 </button>
-                <button onClick={compileCode} disabled={isCompiling} className="btn-secondary" style={{ padding: '5px 15px', fontSize: '0.8rem' }}>
+                <button onClick={compileCode} disabled={isCompiling} className="btn-secondary" style={{ padding: '5px 15px', fontSize: '0.8rem', color: '#007fd7', borderColor: 'rgba(0, 127, 215, 0.4)' }}>
                   {isCompiling ? 'RUNNING...' : 'RUN CODE'}
                 </button>
                 <button onClick={() => handleSubmit(false)} disabled={isSubmitting || !question} className="btn-primary" style={{ padding: '5px 15px', fontSize: '0.8rem' }}>
-                  {isSubmitting ? 'SUBMITTING...' : 'SUBMIT'}
+                  {isSubmitting ? 'SUBMIT...' : 'SUBMIT'}
                 </button>
               </div>
             </div>
@@ -744,7 +847,7 @@ const EditorPage = () => {
               <Editor
                 height="100%"
                 theme="vs-dark"
-                language={activeLanguage === 'cpp' || activeLanguage === 'c' ? 'cpp' : activeLanguage}
+                language="cpp"
                 value={code}
                 onChange={(value) => {
                   setCode(value);
@@ -758,9 +861,9 @@ const EditorPage = () => {
           </div>
 
           {/* Bottom: Console Output */}
-          <div className="glass-panel" style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+          <div className="glass-panel" style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, border: '1px solid #3f3f3f' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexShrink: 0 }}>
-              <h4 style={{ color: '#ff003c', margin: 0, fontFamily: 'var(--font-heading)' }}>CONSOLE OUTPUT</h4>
+              <h4 style={{ color: '#de0606', margin: 0, fontFamily: 'var(--font-heading)' }}>CONSOLE OUTPUT</h4>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>[ SCROLLABLE ]</span>
             </div>
             <pre style={{ 

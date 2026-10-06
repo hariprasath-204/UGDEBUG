@@ -47,13 +47,13 @@ class ErrorBoundary extends React.Component {
             borderRadius: '20px',
             padding: '2.5rem',
             textAlign: 'center',
-            boxShadow: '0 0 40px rgba(255, 0, 127, 0.3)'
+            boxShadow: '0 0 40px rgba(222, 6, 6, 0.3)'
           }}>
             <div style={{
               display: 'inline-flex',
               padding: '16px',
               borderRadius: '50%',
-              background: 'rgba(255, 0, 127, 0.15)',
+              background: 'rgba(222, 6, 6, 0.15)',
               border: '1px solid var(--accent-pink)',
               marginBottom: '1.5rem',
               color: 'var(--accent-pink)'

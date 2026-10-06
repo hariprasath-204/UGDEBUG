@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp, doc, getDoc, setDoc, updateDoc, onSnapshot, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
+import { supabase } from '../supabase';
 import { Link } from 'react-router-dom';
 import LoadingOverlay from './LoadingOverlay';
 import PopupMessage from './PopupMessage';
@@ -62,7 +61,7 @@ const SignatureDrawingPad = ({ sigTitle, onClose, onSave }) => {
 
   return (
     <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }}>
-      <div style={{ background: 'var(--bg-deep-navy)', border: '2px solid var(--accent-cyan)', borderRadius: 'var(--radius-sm)', padding: '1.5rem', width: '90%', maxWidth: '500px', boxShadow: '0 0 30px rgba(0, 240, 255, 0.3)' }}>
+      <div style={{ background: 'var(--bg-deep-navy)', border: '2px solid var(--accent-cyan)', borderRadius: 'var(--radius-sm)', padding: '1.5rem', width: '90%', maxWidth: '500px', boxShadow: '0 0 30px rgba(0, 127, 215, 0.3)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 className="glow-text-cyan" style={{ margin: 0, fontSize: '1.1rem' }}>✍️ Draw Signature: {sigTitle}</h3>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={20} /></button>
@@ -106,7 +105,7 @@ const DEFAULT_BRANDING = {
   tagline: 'THE ULTIMATE DEBUGGING CHALLENGE',
   buttonText: 'START_SYSTEM',
   footerText: '© 2026 Ayya Nadar Janaki Ammal College. Dept. of Computer Applications. All rights reserved.',
-  roundsText: 'C++ DEBUGGING (5 MISSIONS)',
+  roundsText: 'C++ DEBUGGING CHALLENGE',
   modalTitle: 'SYSTEM ACCESS'
 };
 
@@ -142,7 +141,7 @@ const AdminDashboard = () => {
   };
   
   
-  const showPopup = (message, type = 'info') => setPopup({ message, type });
+  const showPopup = (message, type = 'info', onConfirm = null) => setPopup({ message, type, onConfirm });
 
   // Question Form State
   const [formData, setFormData] = useState({
@@ -166,20 +165,6 @@ const AdminDashboard = () => {
 
   const handleDownloadSampleTemplate = () => {
     const sampleData = [
-      {
-        title: "C Bug: Pointer Dereference Fix",
-        phase: "c",
-        description: "Identify and resolve the uninitialized pointer write error in C.",
-        points: 100,
-        expectedOutput: "Value is: 100\nCompleted successfully",
-        variants: {
-          c: {
-            initialCode: "#include <stdio.h>\n\nint main() {\n    int *ptr;\n    *ptr = 100;\n    printf(\"Value is: %d\\n\", *ptr);\n    printf(\"Completed successfully\\n\");\n    return 0;\n}",
-            correctCode: "#include <stdio.h>\n\nint main() {\n    int num = 100;\n    int *ptr = &num;\n    printf(\"Value is: %d\\n\", *ptr);\n    printf(\"Completed successfully\\n\");\n    return 0;\n}",
-            errorLines: "4, 5|6"
-          }
-        }
-      },
       {
         title: "C++ Bug: Vector Out of Bounds",
         phase: "cpp",
@@ -250,34 +235,32 @@ const AdminDashboard = () => {
           };
         }
 
+        const cppV = processedVariants.cpp || processedVariants.c || {};
+
         return {
           title: q.title || `Question #${idx + 1}`,
           description: q.description || '',
-          expectedOutput: q.expectedOutput || '',
+          expected_output: q.expectedOutput || q.expected_output || '',
           points: parseInt(q.points) || 100,
           phase: phase,
           category: (q.category && ['Easy', 'Medium', 'Hard'].includes(q.category)) ? q.category : 'Easy',
+          initial_code: cppV.initialCode || '',
+          correct_code: cppV.correctCode || '',
+          error_lines: cppV.errorLines || '',
           variants: processedVariants
         };
       });
 
-      // Write in batches of 400
-      const BATCH_SIZE = 400;
+      // Write in batches of 50
+      const BATCH_SIZE = 50;
       for (let i = 0; i < processedQuestions.length; i += BATCH_SIZE) {
         const chunk = processedQuestions.slice(i, i + BATCH_SIZE);
         setBulkImportProgress(`Writing questions ${i + 1} to ${Math.min(i + BATCH_SIZE, processedQuestions.length)}...`);
-        const batch = writeBatch(db);
-        chunk.forEach(qItem => {
-          const newDocRef = doc(collection(db, 'questions'));
-          batch.set(newDocRef, {
-            ...qItem,
-            createdAt: serverTimestamp()
-          });
-        });
-        await batch.commit();
+        const { error } = await supabase.from('questions').insert(chunk);
+        if (error) throw error;
       }
 
-      showPopup(`Successfully uploaded ${processedQuestions.length} questions into the question pool!`, 'success');
+      showPopup(`Successfully uploaded ${processedQuestions.length} questions into Supabase!`, 'success');
       setIsBulkModalOpen(false);
       setBulkJsonInput('');
       setBulkImportProgress('');
@@ -290,29 +273,24 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteAllQuestions = async () => {
-    if (window.confirm(`WARNING: Are you sure you want to DELETE ALL ${questionsList.length} QUESTIONS from the database? This cannot be undone!`)) {
-      setIsLoading(true);
-      try {
-        const snap = await getDocs(collection(db, 'questions'));
-        const BATCH_SIZE = 400;
-        const docIds = snap.docs.map(d => d.id);
-        for (let i = 0; i < docIds.length; i += BATCH_SIZE) {
-          const chunk = docIds.slice(i, i + BATCH_SIZE);
-          const batch = writeBatch(db);
-          chunk.forEach(id => {
-            batch.delete(doc(db, 'questions', id));
-          });
-          await batch.commit();
+  const handleDeleteAllQuestions = () => {
+    setPopup({
+      message: `WARNING: Are you sure you want to DELETE ALL ${questionsList.length} QUESTIONS from the database? This cannot be undone!`,
+      type: 'warning',
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          const { error } = await supabase.from('questions').delete().neq('id', '0');
+          if (error) throw error;
+          showPopup(`Deleted all questions. Question bank is now empty.`, 'warning');
+        } catch (err) {
+          console.error(err);
+          showPopup("Failed to delete questions.", "error");
+        } finally {
+          setIsLoading(false);
         }
-        showPopup(`Deleted all questions. Question bank is now empty.`, 'warning');
-      } catch (err) {
-        console.error(err);
-        showPopup("Failed to delete questions.", "error");
-      } finally {
-        setIsLoading(false);
       }
-    }
+    });
   };
 
   // User Form State
@@ -351,12 +329,25 @@ const AdminDashboard = () => {
   }, [eventStatus, eventEndTime]);
 
   // Settings State
-  const [langSettings, setLangSettings] = useState({ c: true, cpp: true });
-  const [phaseLangs, setPhaseLangs] = useState({ easy: 'c', medium: 'cpp', c: 'c', cpp: 'cpp', apiKey: 'ccb79ad09699924cb025d0ba0b6690ed' });
+  const [langSettings, setLangSettings] = useState({ cpp: true });
+  const [phaseLangs, setPhaseLangs] = useState({ cpp: 'cpp', apiKey: 'ccb79ad09699924cb025d0ba0b6690ed' });
   
   // OnlineCompiler.io API Keys Management State
-  const [onlineCompilerKeys, setOnlineCompilerKeys] = useState([]);
-  const [compilerStatusList, setCompilerStatusList] = useState({ active: [], exhausted: [], all: [], totalCount: 0 });
+  const DEFAULT_COMPILER_POOL_INIT = [
+    'a6ed2c1539a350079a242c2c2deecc36',
+    'ccb79ad09699924cb025d0ba0b6690ed',
+    '8471946023c357608b7666f763b66d9e',
+    '00f2e3686a1712e01b8fa42d4ff76635',
+    '31f89d72d1ae6013e4925c06bac75502'
+  ];
+
+  const [onlineCompilerKeys, setOnlineCompilerKeys] = useState(DEFAULT_COMPILER_POOL_INIT);
+  const [compilerStatusList, setCompilerStatusList] = useState({
+    active: DEFAULT_COMPILER_POOL_INIT.map(k => ({ apiKey: k, status: 'active', used: 0 })),
+    exhausted: [],
+    all: DEFAULT_COMPILER_POOL_INIT.map(k => ({ apiKey: k, status: 'active', used: 0 })),
+    totalCount: DEFAULT_COMPILER_POOL_INIT.length
+  });
   const [isCheckingCompiler, setIsCheckingCompiler] = useState(false);
   const [newCompilerKey, setNewCompilerKey] = useState('');
 
@@ -364,139 +355,300 @@ const AdminDashboard = () => {
   const [liveUsers, setLiveUsers] = useState([]);
 
   useEffect(() => {
-    // Listen to Event State
-    const eventDocRef = doc(db, 'settings', 'event');
-    const unsubEvent = onSnapshot(eventDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setEventStatus(data.status);
-        if (data.durationMinutes !== undefined && data.durationMinutes !== null && !isNaN(parseFloat(data.durationMinutes)) && parseFloat(data.durationMinutes) > 0) {
-          setDurationMinutes(data.durationMinutes);
-        } else if (!durationMinutes || parseFloat(durationMinutes) <= 0) {
-          setDurationMinutes(60);
-        }
-        if (data.questionsPerStudent !== undefined && data.questionsPerStudent !== null && !isNaN(parseInt(data.questionsPerStudent))) {
-          setQuestionsPerStudent(parseInt(data.questionsPerStudent));
-        } else {
-          setQuestionsPerStudent(2);
-        }
-        setEventEndTime(data.endTime || null);
-      } else {
-        setDoc(eventDocRef, { status: 'waiting', endTime: null, durationMinutes: 60, questionsPerStudent: 2 });
-      }
-    });
-
-    // Listen to Language Settings
-    const langDocRef = doc(db, 'settings', 'language');
-    const unsubLang = onSnapshot(langDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const d = docSnap.data();
-        setLangSettings(d);
-        setPhaseLangs({
-          easy: d.easy || 'c',
-          medium: d.medium || 'cpp',
-          hard: d.hard || 'cpp',
-          apiKey: d.apiKey || 'ccb79ad09699924cb025d0ba0b6690ed'
+    const fetchAllData = async () => {
+      // 1. Fetch Settings
+      const { data: sRows } = await supabase.from('settings').select('*');
+      if (sRows) {
+        sRows.forEach(row => {
+          const d = row.data || {};
+          if (row.id === 'event') {
+            setEventStatus(d.status || 'waiting');
+            if (d.durationMinutes && !isNaN(parseFloat(d.durationMinutes))) {
+              setDurationMinutes(d.durationMinutes);
+            }
+            if (d.questionsPerStudent && !isNaN(parseInt(d.questionsPerStudent))) {
+              setQuestionsPerStudent(parseInt(d.questionsPerStudent));
+            }
+            setEventEndTime(d.endTime || null);
+          } else if (row.id === 'language') {
+            setLangSettings(d);
+            setPhaseLangs({
+              easy: d.easy || 'c',
+              medium: d.medium || 'cpp',
+              hard: d.hard || 'cpp',
+              apiKey: d.apiKey || 'ccb79ad09699924cb025d0ba0b6690ed'
+            });
+          } else if (row.id === 'onlinecompiler') {
+            const keys = Array.isArray(d.keys) ? d.keys : [];
+            setOnlineCompilerKeys(keys);
+            fetchInstantCompilerStatus(keys);
+            fetchCompilerStatus(keys);
+          } else if (row.id === 'branding') {
+            setBrandingData(prev => ({
+              collegeName: d.collegeName !== undefined ? d.collegeName : prev.collegeName,
+              departmentName: d.departmentName !== undefined ? d.departmentName : prev.departmentName,
+              mainTitle: d.mainTitle !== undefined ? d.mainTitle : prev.mainTitle,
+              associationTitle: d.associationTitle !== undefined ? d.associationTitle : prev.associationTitle,
+              tagline: d.tagline !== undefined ? d.tagline : prev.tagline,
+              buttonText: d.buttonText !== undefined ? d.buttonText : prev.buttonText,
+              footerText: d.footerText !== undefined ? d.footerText : prev.footerText,
+              roundsText: d.roundsText !== undefined ? d.roundsText : prev.roundsText,
+              modalTitle: d.modalTitle !== undefined ? d.modalTitle : prev.modalTitle
+            }));
+          }
         });
-      } else {
-        setDoc(langDocRef, { easy: 'c', medium: 'cpp', hard: 'cpp', apiKey: 'ccb79ad09699924cb025d0ba0b6690ed', c: true, cpp: true });
       }
-    });
 
-    // Listen to Live Users
-    const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const users = [];
-      snapshot.forEach(doc => {
-        users.push({ id: doc.id, ...doc.data() });
-      });
-      users.sort((a, b) => (a.rollNo > b.rollNo ? 1 : -1));
-      setLiveUsers(users);
-    });
-
-    // Listen to Questions
-    const unsubQuestions = onSnapshot(collection(db, 'questions'), (snapshot) => {
-      const qs = [];
-      snapshot.forEach(doc => qs.push({ id: doc.id, ...doc.data() }));
-      setQuestionsList(qs);
-    });
-
-    // Listen to OnlineCompiler.io API Keys
-    const compilerDocRef = doc(db, 'settings', 'onlinecompiler');
-    const unsubCompiler = onSnapshot(compilerDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const keys = Array.isArray(data.keys) ? data.keys : [];
-        setOnlineCompilerKeys(keys);
-        fetchInstantCompilerStatus(keys);
-        fetchCompilerStatus(keys);
-      } else {
-        setDoc(compilerDocRef, { keys: [] });
-      }
-    });
-
-    // Listen to Site Branding Settings
-    const brandingDocRef = doc(db, 'settings', 'branding');
-    const unsubBranding = onSnapshot(brandingDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const d = docSnap.data();
-        setBrandingData(prev => ({
-          collegeName: d.collegeName !== undefined ? d.collegeName : prev.collegeName,
-          departmentName: d.departmentName !== undefined ? d.departmentName : prev.departmentName,
-          mainTitle: d.mainTitle !== undefined ? d.mainTitle : prev.mainTitle,
-          associationTitle: d.associationTitle !== undefined ? d.associationTitle : prev.associationTitle,
-          tagline: d.tagline !== undefined ? d.tagline : prev.tagline,
-          buttonText: d.buttonText !== undefined ? d.buttonText : prev.buttonText,
-          footerText: d.footerText !== undefined ? d.footerText : prev.footerText,
-          roundsText: d.roundsText !== undefined ? d.roundsText : prev.roundsText,
-          modalTitle: d.modalTitle !== undefined ? d.modalTitle : prev.modalTitle
+      // 2. Fetch Users
+      const { data: uRows } = await supabase.from('users').select('*');
+      if (uRows) {
+        const mapped = uRows.map(u => ({
+          ...u,
+          rollNo: u.roll_no || u.rollNo,
+          tabSwitches: u.tab_switches ?? u.tabSwitches ?? 0,
+          copyPasteCount: u.copy_paste_count ?? u.copyPasteCount ?? 0,
+          totalSubmissionsCount: u.total_submissions_count ?? u.totalSubmissionsCount ?? 0,
+          elapsedTimeMs: u.elapsed_time_ms ?? u.elapsedTimeMs ?? 0,
+          isFinished: u.is_finished ?? u.isFinished ?? false,
+          selectedQuestionId: u.selected_question_id || u.selectedQuestionId,
+          completedQuestions: u.completed_questions || u.completedQuestions || [],
+          cumulativeClearedErrors: u.cumulative_cleared_errors ?? u.cumulativeClearedErrors ?? 0,
+          cumulativeTotalErrors: u.cumulative_total_errors ?? u.cumulativeTotalErrors ?? 0,
+          currentCode: u.current_code || u.currentCode || ''
         }));
-      } else {
-        setDoc(brandingDocRef, DEFAULT_BRANDING);
+        mapped.sort((a, b) => ((a.rollNo || '') > (b.rollNo || '') ? 1 : -1));
+        setLiveUsers(mapped);
       }
-    });
+
+      // 3. Fetch Questions
+      const { data: qRows } = await supabase.from('questions').select('*');
+      if (qRows) {
+        const mappedQ = qRows.map(q => ({
+          ...q,
+          expectedOutput: q.expected_output || q.expectedOutput,
+          initialCode: q.initial_code || q.initialCode,
+          correctCode: q.correct_code || q.correctCode,
+          errorLines: q.error_lines || q.errorLines
+        }));
+        setQuestionsList(mappedQ);
+      }
+    };
+
+    fetchAllData();
+
+    // 4. Realtime Subscriptions
+    const settingsChan = supabase
+      .channel('admin:settings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, (payload) => {
+        const row = payload.new;
+        if (!row) return;
+        const d = row.data || {};
+        if (row.id === 'event') {
+          setEventStatus(d.status || 'waiting');
+          if (d.durationMinutes) setDurationMinutes(d.durationMinutes);
+          if (d.questionsPerStudent) setQuestionsPerStudent(d.questionsPerStudent);
+          setEventEndTime(d.endTime || null);
+        } else if (row.id === 'language') {
+          setLangSettings(d);
+        } else if (row.id === 'onlinecompiler') {
+          const keys = Array.isArray(d.keys) ? d.keys : [];
+          setOnlineCompilerKeys(keys);
+        } else if (row.id === 'branding') {
+          setBrandingData(d);
+        }
+      })
+      .subscribe();
+
+    const usersChan = supabase
+      .channel('admin:users')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async () => {
+        const { data: uRows } = await supabase.from('users').select('*');
+        if (uRows) {
+          const mapped = uRows.map(u => ({
+            ...u,
+            rollNo: u.roll_no || u.rollNo,
+            tabSwitches: u.tab_switches ?? u.tabSwitches ?? 0,
+            copyPasteCount: u.copy_paste_count ?? u.copyPasteCount ?? 0,
+            totalSubmissionsCount: u.total_submissions_count ?? u.totalSubmissionsCount ?? 0,
+            elapsedTimeMs: u.elapsed_time_ms ?? u.elapsedTimeMs ?? 0,
+            isFinished: u.is_finished ?? u.isFinished ?? false,
+            selectedQuestionId: u.selected_question_id || u.selectedQuestionId,
+            completedQuestions: u.completed_questions || u.completedQuestions || [],
+            cumulativeClearedErrors: u.cumulative_cleared_errors ?? u.cumulativeClearedErrors ?? 0,
+            cumulativeTotalErrors: u.cumulative_total_errors ?? u.cumulativeTotalErrors ?? 0,
+            currentCode: u.current_code || u.currentCode || ''
+          }));
+          mapped.sort((a, b) => ((a.rollNo || '') > (b.rollNo || '') ? 1 : -1));
+          setLiveUsers(mapped);
+        }
+      })
+      .subscribe();
+
+    const questionsChan = supabase
+      .channel('admin:questions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, async () => {
+        const { data: qRows } = await supabase.from('questions').select('*');
+        if (qRows) {
+          const mappedQ = qRows.map(q => ({
+            ...q,
+            expectedOutput: q.expected_output || q.expectedOutput,
+            initialCode: q.initial_code || q.initialCode,
+            correctCode: q.correct_code || q.correctCode,
+            errorLines: q.error_lines || q.errorLines
+          }));
+          setQuestionsList(mappedQ);
+        }
+      })
+      .subscribe();
 
     return () => {
-      unsubEvent();
-      unsubLang();
-      unsubUsers();
-      unsubQuestions();
-      unsubCompiler();
-      unsubBranding();
+      supabase.removeChannel(settingsChan);
+      supabase.removeChannel(usersChan);
+      supabase.removeChannel(questionsChan);
     };
   }, []);
 
+  const DEFAULT_COMPILER_POOL = [
+    'a6ed2c1539a350079a242c2c2deecc36',
+    'ccb79ad09699924cb025d0ba0b6690ed',
+    '8471946023c357608b7666f763b66d9e',
+    '00f2e3686a1712e01b8fa42d4ff76635',
+    '31f89d72d1ae6013e4925c06bac75502'
+  ];
+
   const fetchInstantCompilerStatus = async (keysToTest = onlineCompilerKeys) => {
+    const rawKeys = (Array.isArray(keysToTest) && keysToTest.length > 0) ? keysToTest : (onlineCompilerKeys.length > 0 ? onlineCompilerKeys : DEFAULT_COMPILER_POOL);
+    const uniqueKeys = [...new Set(rawKeys.map(k => (typeof k === 'string' ? k.trim() : (k?.apiKey || k?.key || '')).trim()).filter(Boolean))];
+    
+    // 1. Immediately populate status list with all keys so UI is instant and never shows 0
+    const initialList = uniqueKeys.map(key => ({
+      apiKey: key,
+      status: 'active',
+      used: 0,
+      errorReason: null
+    }));
+    
+    setCompilerStatusList(prev => ({
+      totalCount: uniqueKeys.length,
+      all: initialList,
+      active: prev.active.length > 0 ? prev.active : initialList,
+      exhausted: prev.exhausted || []
+    }));
+
     try {
-      const res = await axios.post('/api/onlinecompiler/count', { keys: keysToTest });
-      if (res.data) {
-        setCompilerStatusList(prev => ({
-          ...prev,
-          totalCount: res.data.totalCount || (res.data.all ? res.data.all.length : 0),
-          all: res.data.all || prev.all || [],
-          active: res.data.active || prev.active || [],
-          exhausted: res.data.exhausted || prev.exhausted || []
-        }));
+      const res = await axios.post('/api/onlinecompiler/count', { keys: uniqueKeys });
+      if (res.data && res.data.all && res.data.all.length > 0) {
+        setCompilerStatusList({
+          totalCount: res.data.totalCount || res.data.all.length,
+          all: res.data.all,
+          active: res.data.active || [],
+          exhausted: res.data.exhausted || []
+        });
       }
     } catch (err) {
-      console.error('Failed to fetch instant OnlineCompiler status:', err);
+      // Backend not responding, client-side list is already active
     }
   };
 
   const fetchCompilerStatus = async (keysToTest = onlineCompilerKeys) => {
     setIsCheckingCompiler(true);
-    await fetchInstantCompilerStatus(keysToTest);
+    const rawKeys = (Array.isArray(keysToTest) && keysToTest.length > 0) ? keysToTest : (onlineCompilerKeys.length > 0 ? onlineCompilerKeys : DEFAULT_COMPILER_POOL);
+    const uniqueKeys = [...new Set(rawKeys.map(k => (typeof k === 'string' ? k.trim() : (k?.apiKey || k?.key || '')).trim()).filter(Boolean))];
+
     try {
-      const res = await axios.post('/api/onlinecompiler/status', { keys: keysToTest });
-      if (res.data) {
+      // 1. Try backend verification endpoint first
+      const res = await axios.post('/api/onlinecompiler/status', { keys: uniqueKeys }, { timeout: 12000 });
+      if (res.data && res.data.all && res.data.all.length > 0) {
         setCompilerStatusList({
           active: res.data.active || [],
           exhausted: res.data.exhausted || [],
           all: res.data.all || [],
-          totalCount: res.data.totalCount || (res.data.all ? res.data.all.length : 0)
+          totalCount: res.data.totalCount || res.data.all.length
         });
+        return;
       }
     } catch (err) {
-      console.error('Failed to fetch OnlineCompiler status:', err);
+      // Fall through to browser sequential test
+    }
+
+    // 2. Direct browser sequential test ping to OnlineCompiler.io (spaced 250ms apart to prevent concurrent rate limits)
+    try {
+      const results = [];
+      for (const key of uniqueKeys) {
+        let status = 'active';
+        let errorReason = null;
+
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const resp = await axios.post('https://api.onlinecompiler.io/api/run-code-sync/', {
+              compiler: 'g++-15',
+              code: 'int main(){return 0;}',
+              input: ''
+            }, {
+              timeout: 9000,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': key,
+                'ApiKey': key
+              }
+            });
+
+            const errCheck = ((resp.data?.error || '') + ' ' + (resp.data?.message || '')).toLowerCase();
+            if (errCheck.includes('concurrent') || errCheck.includes('too many')) {
+              // Transient concurrency limit from pinging, retry after 300ms
+              await new Promise(r => setTimeout(r, 350));
+              continue;
+            }
+
+            if (
+              resp.status === 401 || resp.status === 403 ||
+              errCheck.includes('limit exceeded') || errCheck.includes('quota') || errCheck.includes('daily limit') ||
+              errCheck.includes('invalid api key') || errCheck.includes('unauthorized')
+            ) {
+              status = 'exhausted';
+              errorReason = resp.data?.error || resp.data?.message || 'Quota Limit Exceeded';
+            } else {
+              status = 'active';
+              errorReason = null;
+            }
+            break;
+          } catch (pingErr) {
+            const errMsg = pingErr?.response?.data?.error || pingErr?.response?.data?.message || pingErr?.message || '';
+            const errStatus = pingErr?.response?.status;
+            const errCheck = errMsg.toLowerCase();
+
+            if (errCheck.includes('concurrent') || errCheck.includes('too many')) {
+              await new Promise(r => setTimeout(r, 350));
+              continue;
+            }
+
+            if (errStatus === 401 || errStatus === 403 || errCheck.includes('limit exceeded') || errCheck.includes('quota') || errCheck.includes('daily limit')) {
+              status = 'exhausted';
+              errorReason = errMsg || `HTTP ${errStatus} Quota Limit`;
+            } else {
+              // Temporary network hiccup, keep active
+              status = 'active';
+              errorReason = null;
+            }
+            break;
+          }
+        }
+
+        results.push({ apiKey: key, status, used: 0, errorReason });
+        await new Promise(r => setTimeout(r, 250)); // Spacing between key checks
+      }
+
+      const active = results.filter(r => r.status === 'active');
+      const exhausted = results.filter(r => r.status === 'exhausted');
+
+      setCompilerStatusList({
+        totalCount: results.length,
+        all: results,
+        active,
+        exhausted
+      });
+    } catch (finalErr) {
+      console.error('Failed test of compiler keys:', finalErr);
     } finally {
       setIsCheckingCompiler(false);
     }
@@ -509,7 +661,10 @@ const AdminDashboard = () => {
     setIsLoading(true);
     try {
       const updatedKeys = [...new Set([...onlineCompilerKeys, cleanKey])];
-      await setDoc(doc(db, 'settings', 'onlinecompiler'), { keys: updatedKeys }, { merge: true });
+      await supabase.from('settings').upsert({
+        id: 'onlinecompiler',
+        data: { keys: updatedKeys }
+      });
       await axios.post('/api/onlinecompiler/add', { apiKey: cleanKey });
       setNewCompilerKey('');
       showPopup('New OnlineCompiler.io API key added successfully!', 'success');
@@ -522,16 +677,28 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteCompilerKey = async (keyToRemove) => {
-    if (window.confirm('Remove this custom OnlineCompiler.io API key from settings?')) {
-      setIsLoading(true);
-      const updatedKeys = onlineCompilerKeys.filter(k => k !== keyToRemove);
-      await setDoc(doc(db, 'settings', 'onlinecompiler'), { keys: updatedKeys }, { merge: true });
-      showPopup('OnlineCompiler.io API key removed', 'success');
-      await fetchInstantCompilerStatus(updatedKeys);
-      fetchCompilerStatus(updatedKeys);
-      setIsLoading(false);
-    }
+  const handleDeleteCompilerKey = (keyToRemove) => {
+    setPopup({
+      message: 'Remove this custom OnlineCompiler.io API key from settings?',
+      type: 'warning',
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          const updatedKeys = onlineCompilerKeys.filter(k => k !== keyToRemove);
+          await supabase.from('settings').upsert({
+            id: 'onlinecompiler',
+            data: { keys: updatedKeys }
+          });
+          showPopup('OnlineCompiler.io API key removed', 'success');
+          await fetchInstantCompilerStatus(updatedKeys);
+          fetchCompilerStatus(updatedKeys);
+        } catch (e) {
+          showPopup('Failed to remove API key', 'error');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    });
   };
 
   const handleQuestionChange = (e) => {
@@ -573,19 +740,30 @@ const AdminDashboard = () => {
         processedVariants[lang].errorLinesArray = errorGroups.flat();
       }
       
+      const cppV = processedVariants.cpp || processedVariants.c || {};
+
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        expected_output: formData.expectedOutput,
+        points: parseInt(formData.points) || 100,
+        phase: formData.phase,
+        category: formData.category || 'Easy',
+        initial_code: cppV.initialCode || '',
+        correct_code: cppV.correctCode || '',
+        error_lines: cppV.errorLines || '',
+        variants: processedVariants
+      };
+
       if (editingQuestionId) {
-        await updateDoc(doc(db, 'questions', editingQuestionId), {
-          title: formData.title, description: formData.description, expectedOutput: formData.expectedOutput,
-          points: parseInt(formData.points), phase: formData.phase, category: formData.category || 'Easy', variants: processedVariants
-        });
+        const { error } = await supabase.from('questions').update(payload).eq('id', editingQuestionId);
+        if (error) throw error;
         showPopup('Question updated successfully!', 'success');
         setStatus('Question updated successfully!');
         setEditingQuestionId(null);
       } else {
-        await addDoc(collection(db, 'questions'), {
-          title: formData.title, description: formData.description, expectedOutput: formData.expectedOutput,
-          points: parseInt(formData.points), phase: formData.phase, category: formData.category || 'Easy', variants: processedVariants, createdAt: serverTimestamp()
-        });
+        const { error } = await supabase.from('questions').insert(payload);
+        if (error) throw error;
         showPopup('Question added successfully!', 'success');
         setStatus('Question added successfully!');
       }
@@ -609,7 +787,7 @@ const AdminDashboard = () => {
     setFormData({
       title: q.title || '',
       description: q.description || '',
-      expectedOutput: q.expectedOutput || '',
+      expectedOutput: q.expectedOutput || q.expected_output || '',
       points: q.points || 100,
       phase: p,
       category: q.category || 'Easy',
@@ -628,17 +806,27 @@ const AdminDashboard = () => {
     setUserStatus('Saving user...');
     try {
       if (editingUserId) {
-        await updateDoc(doc(db, 'users', editingUserId), {
-          name: userForm.name, rollNo: userForm.rollNo, category: userForm.category || 'Easy'
-        });
+        const { error } = await supabase.from('users').update({
+          name: userForm.name,
+          roll_no: userForm.rollNo,
+          category: userForm.category || 'Easy'
+        }).eq('id', editingUserId);
+        if (error) throw error;
         showPopup('User updated successfully!', 'success');
         setUserStatus('User updated successfully!');
         setEditingUserId(null);
       } else {
-        await addDoc(collection(db, 'users'), {
-          name: userForm.name, rollNo: userForm.rollNo, category: userForm.category || 'Easy',
-          selectedLanguage: null, tabSwitches: 0, copyPasteCount: 0, score: 0, currentCode: '', isFinished: false, joinedAt: serverTimestamp()
+        const { error } = await supabase.from('users').insert({
+          name: userForm.name,
+          roll_no: userForm.rollNo,
+          category: userForm.category || 'Easy',
+          tab_switches: 0,
+          copy_paste_count: 0,
+          score: 0,
+          current_code: '',
+          is_finished: false
         });
+        if (error) throw error;
         showPopup('User added successfully!', 'success');
         setUserStatus('User added successfully!');
       }
@@ -652,9 +840,57 @@ const AdminDashboard = () => {
   };
 
   const handleEditUser = (u) => {
-    setUserForm({ name: u.name || '', rollNo: u.rollNo || '', category: u.category || 'Easy' });
+    setUserForm({ name: u.name || '', rollNo: u.rollNo || u.roll_no || '', category: u.category || 'Easy' });
     setEditingUserId(u.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteUser = (userId, userName = 'this participant') => {
+    setPopup({
+      message: `Are you sure you want to delete ${userName}? This action cannot be undone.`,
+      type: 'warning',
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          const { error } = await supabase.from('users').delete().eq('id', userId);
+          if (error) {
+            showPopup(`Failed to delete user: ${error.message}`, 'error');
+          } else {
+            setLiveUsers(prev => prev.filter(u => u.id !== userId));
+            showPopup(`User ${userName} deleted successfully.`, 'success');
+          }
+        } catch (err) {
+          console.error(err);
+          showPopup('Error deleting user.', 'error');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    });
+  };
+
+  const handleDeleteSingleQuestion = (qId, qTitle = 'this question') => {
+    setPopup({
+      message: `Are you sure you want to delete "${qTitle}"?`,
+      type: 'warning',
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          const { error } = await supabase.from('questions').delete().eq('id', qId);
+          if (error) {
+            showPopup(`Failed to delete question: ${error.message}`, 'error');
+          } else {
+            setQuestionsList(prev => prev.filter(q => q.id !== qId));
+            showPopup('Question deleted successfully.', 'success');
+          }
+        } catch (err) {
+          console.error(err);
+          showPopup('Error deleting question.', 'error');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    });
   };
 
   const handleUpdateQuestionsPerStudent = async (newCount) => {
@@ -665,8 +901,16 @@ const AdminDashboard = () => {
     }
     setIsLoading(true);
     try {
-      await updateDoc(doc(db, 'settings', 'event'), { questionsPerStudent: parsed });
-      await setDoc(doc(db, 'settings', 'branding'), { roundsText: `C++ DEBUGGING (${parsed} MISSIONS)` }, { merge: true });
+      const { data: evRow } = await supabase.from('settings').select('data').eq('id', 'event').single();
+      const currentEv = evRow?.data || {};
+      await supabase.from('settings').upsert({
+        id: 'event',
+        data: { ...currentEv, questionsPerStudent: parsed }
+      });
+      await supabase.from('settings').upsert({
+        id: 'branding',
+        data: { ...brandingData, roundsText: `C++ DEBUGGING (${parsed} MISSIONS)` }
+      });
       setQuestionsPerStudent(parsed);
       showPopup(`Saved random questions allocation to ${parsed} questions per student!`, 'success');
     } catch (err) {
@@ -677,140 +921,207 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleStartEvent = async () => {
+  const handleStartEvent = () => {
     const mins = parseFloat(durationMinutes);
     if (!mins || isNaN(mins) || mins <= 0) {
       showPopup("Please enter a valid duration in minutes greater than 0.", "error");
       return;
     }
-    if (window.confirm(`Start event for ${mins} minutes? All users in waiting room will enter the IDE.`)) {
-      setIsLoading(true);
-      await syncClock();
-      const now = getNow();
-      const endTime = new Date(now + mins * 60000);
-      try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const updatePromises = [];
-        usersSnap.forEach(docSnap => {
-          updatePromises.push(updateDoc(doc(db, 'users', docSnap.id), {
-            isFinished: false,
-            selectedQuestionId: null
-          }));
-        });
-        await Promise.all(updatePromises);
-      } catch (err) {
-        console.warn('Error resetting users for start event:', err);
+    setPopup({
+      message: `Start event for ${mins} minutes? All users in waiting room will enter the IDE.`,
+      type: 'warning',
+      onConfirm: async () => {
+        setIsLoading(true);
+        await syncClock();
+        const now = getNow();
+        const endTime = new Date(now + mins * 60000);
+        try {
+          await supabase.from('users').update({
+            is_finished: false,
+            selected_question_id: null
+          }).neq('id', '0');
+          
+          await supabase.from('settings').upsert({
+            id: 'event',
+            data: {
+              status: 'active',
+              durationMinutes: mins,
+              questionsPerStudent: parseInt(questionsPerStudent, 10) || 2,
+              startTime: now,
+              endTime: endTime.toISOString(),
+              roundId: now
+            }
+          });
+          setEventStatus('active');
+          showPopup(`Event started for ${mins} minutes!`, 'success');
+        } catch (err) {
+          console.warn('Error resetting users for start event:', err);
+          showPopup('Failed to start event.', 'error');
+        } finally {
+          setIsLoading(false);
+        }
       }
-      await updateDoc(doc(db, 'settings', 'event'), { 
-        status: 'active', 
-        durationMinutes: mins, 
-        questionsPerStudent: parseInt(questionsPerStudent, 10) || 2,
-        startTime: now,
-        endTime: endTime.toISOString(),
-        roundId: now
-      });
-      setIsLoading(false);
-    }
+    });
   };
 
-  const handleUpdateTimer = async () => {
+  const handleUpdateTimer = () => {
     const mins = parseFloat(durationMinutes);
     if (!mins || isNaN(mins) || mins <= 0) {
       showPopup("Please enter a valid duration in minutes greater than 0.", "error");
       return;
     }
-    if (window.confirm(`Update remaining timer to ${mins} minutes for all active users?`)) {
-      setIsLoading(true);
-      await syncClock();
-      const now = getNow();
-      const endTime = new Date(now + mins * 60000);
-      await updateDoc(doc(db, 'settings', 'event'), {
-        durationMinutes: mins,
-        endTime: endTime.toISOString()
-      });
-      setIsLoading(false);
-      showPopup(`Timer updated to ${mins} minutes remaining!`, "success");
-    }
-  };
-
-  const handleStopEvent = async () => {
-    if (window.confirm("Are you sure you want to STOP the event? All active users will be auto-submitted.")) {
-      setIsLoading(true);
-      await updateDoc(doc(db, 'settings', 'event'), { status: 'ended' });
-      setIsLoading(false);
-    }
-  };
-
-  const handleResetRound = async () => {
-    if (window.confirm("WARNING: Are you sure you want to RESET THE ROUND TIMER? This resets event status to WAITING and clears active editor sessions, while PRESERVING all participant scores, time taken, warnings, and submissions.")) {
-      setIsLoading(true);
-      try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const updatePromises = [];
-        usersSnap.forEach(docSnap => {
-          updatePromises.push(updateDoc(doc(db, 'users', docSnap.id), {
-            isFinished: false,
-            currentCode: '',
-            selectedQuestionId: null
-          }));
-        });
-        await Promise.all(updatePromises);
-        await updateDoc(doc(db, 'settings', 'event'), { status: 'waiting', startTime: null, endTime: null });
-        showPopup("Round status reset to WAITING (Participant scores, warnings, time & submissions preserved).", "success");
-      } catch (err) {
-        console.error(err);
-        showPopup("Failed to reset round.", "error");
-      } finally {
-        setIsLoading(false);
+    setPopup({
+      message: `Update remaining timer to ${mins} minutes for all active users?`,
+      type: 'warning',
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          await syncClock();
+          const now = getNow();
+          const endTime = new Date(now + mins * 60000);
+          const { data: evRow } = await supabase.from('settings').select('data').eq('id', 'event').single();
+          const currentEv = evRow?.data || {};
+          await supabase.from('settings').upsert({
+            id: 'event',
+            data: {
+              ...currentEv,
+              durationMinutes: mins,
+              endTime: endTime.toISOString()
+            }
+          });
+          showPopup(`Timer updated to ${mins} minutes remaining!`, "success");
+        } catch (err) {
+          showPopup("Failed to update timer.", "error");
+        } finally {
+          setIsLoading(false);
+        }
       }
-    }
+    });
+  };
+
+  const handleStopEvent = () => {
+    setPopup({
+      message: "Are you sure you want to STOP the event? All active users will be auto-submitted.",
+      type: 'warning',
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          const { data: evRow } = await supabase.from('settings').select('data').eq('id', 'event').single();
+          const currentEv = evRow?.data || {};
+          await supabase.from('settings').upsert({
+            id: 'event',
+            data: {
+              ...currentEv,
+              status: 'ended'
+            }
+          });
+          setEventStatus('ended');
+          showPopup("Event stopped.", "warning");
+        } catch (err) {
+          showPopup("Failed to stop event.", "error");
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    });
+  };
+
+  const handleResetRound = () => {
+    setPopup({
+      message: "WARNING: Are you sure you want to RESET THE ROUND TIMER? This resets event status to WAITING and clears active editor sessions, while PRESERVING all participant scores, time taken, warnings, and submissions.",
+      type: 'warning',
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          await supabase.from('users').update({
+            is_finished: false,
+            current_code: '',
+            selected_question_id: null
+          }).neq('id', '0');
+
+          const { data: evRow } = await supabase.from('settings').select('data').eq('id', 'event').single();
+          const currentEv = evRow?.data || {};
+          await supabase.from('settings').upsert({
+            id: 'event',
+            data: {
+              ...currentEv,
+              status: 'waiting',
+              startTime: null,
+              endTime: null
+            }
+          });
+          setEventStatus('waiting');
+          setTimeLeft('');
+          showPopup("Round status reset to WAITING (Participant scores, warnings, time & submissions preserved).", "success");
+        } catch (err) {
+          console.error(err);
+          showPopup("Failed to reset round.", "error");
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    });
   };
 
   const handleLanguageToggle = async (lang) => {
     setIsLoading(true);
     const updated = { ...langSettings, [lang]: !langSettings[lang] };
-    await setDoc(doc(db, 'settings', 'language'), updated, { merge: true });
+    await supabase.from('settings').upsert({
+      id: 'language',
+      data: updated
+    });
     setIsLoading(false);
   };
 
   const handleSavePhaseLanguages = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    await setDoc(doc(db, 'settings', 'language'), {
-      ...langSettings,
-      easy: phaseLangs.easy,
-      medium: phaseLangs.medium,
-      hard: phaseLangs.hard,
-      apiKey: phaseLangs.apiKey
-    }, { merge: true });
+    await supabase.from('settings').upsert({
+      id: 'language',
+      data: {
+        ...langSettings,
+        easy: phaseLangs.easy,
+        medium: phaseLangs.medium,
+        hard: phaseLangs.hard,
+        apiKey: phaseLangs.apiKey
+      }
+    });
     setIsLoading(false);
     showPopup('Round languages & API Key saved successfully!', 'success');
   };
 
-  const handleResetData = async () => {
-    if (window.confirm("WARNING: This will delete ALL users and their submissions. This action CANNOT be undone! Are you sure?")) {
-      setIsLoading(true);
-      try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const deletePromises = [];
-        usersSnap.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'users', docSnap.id))));
-        await Promise.all(deletePromises);
-        await setDoc(doc(db, 'settings', 'event'), { status: 'waiting', endTime: null, durationMinutes: 60 });
-        showPopup("All user data has been wiped.", "warning");
-      } catch (err) {
-        console.error(err);
-        showPopup("Failed to reset data.", "error");
-      } finally {
-        setIsLoading(false);
+  const handleResetData = () => {
+    setPopup({
+      message: "WARNING: This will delete ALL users and their submissions. This action CANNOT be undone! Are you sure?",
+      type: 'warning',
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          await supabase.from('users').delete().neq('id', '0');
+          await supabase.from('settings').upsert({
+            id: 'event',
+            data: { status: 'waiting', endTime: null, durationMinutes: 60 }
+          });
+          setLiveUsers([]);
+          showPopup("All user data has been wiped.", "warning");
+        } catch (err) {
+          console.error(err);
+          showPopup("Failed to reset data.", "error");
+        } finally {
+          setIsLoading(false);
+        }
       }
-    }
+    });
   };
 
   const handleSaveBranding = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await setDoc(doc(db, 'settings', 'branding'), brandingData, { merge: true });
+      await supabase.from('settings').upsert({
+        id: 'branding',
+        data: brandingData
+      });
       showPopup('Landing Page content & branding updated successfully!', 'success');
     } catch (err) {
       console.error(err);
@@ -820,20 +1131,27 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleResetBrandingDefaults = async () => {
-    if (window.confirm("Reset all landing page text and headers back to default?")) {
-      setIsLoading(true);
-      try {
-        setBrandingData(DEFAULT_BRANDING);
-        await setDoc(doc(db, 'settings', 'branding'), DEFAULT_BRANDING);
-        showPopup('Branding reset to default templates.', 'success');
-      } catch (err) {
-        console.error(err);
-        showPopup('Failed to reset branding.', 'error');
-      } finally {
-        setIsLoading(false);
+  const handleResetBrandingDefaults = () => {
+    setPopup({
+      message: "Reset all landing page text and headers back to default?",
+      type: 'warning',
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          setBrandingData(DEFAULT_BRANDING);
+          await supabase.from('settings').upsert({
+            id: 'branding',
+            data: DEFAULT_BRANDING
+          });
+          showPopup('Branding reset to default templates.', 'success');
+        } catch (err) {
+          console.error(err);
+          showPopup('Failed to reset branding.', 'error');
+        } finally {
+          setIsLoading(false);
+        }
       }
-    }
+    });
   };
 
   const renderContent = () => {
@@ -853,7 +1171,7 @@ const AdminDashboard = () => {
                   <a href="/" target="_blank" rel="noreferrer" className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', textDecoration: 'none' }}>
                     🔗 Open Landing Page Live
                   </a>
-                  <button type="button" onClick={handleResetBrandingDefaults} className="btn-secondary" style={{ color: 'var(--accent-magenta)', borderColor: 'rgba(255, 0, 60, 0.4)', fontSize: '0.85rem' }}>
+                  <button type="button" onClick={handleResetBrandingDefaults} className="btn-secondary" style={{ color: 'var(--accent-magenta)', borderColor: 'rgba(222, 6, 6, 0.4)', fontSize: '0.85rem' }}>
                     ↺ Reset To Defaults
                   </button>
                 </div>
@@ -1009,11 +1327,11 @@ const AdminDashboard = () => {
                   </label>
                   <div style={{
                     background: 'radial-gradient(ellipse at 15% 25%, #220309 0%, transparent 55%), radial-gradient(ellipse at 85% 30%, #150206 0%, transparent 55%), linear-gradient(135deg, #0c0205 0%, #060608 50%, #0a0204 100%)',
-                    border: '1px solid rgba(255, 0, 60, 0.4)',
+                    border: '1px solid rgba(222, 6, 6, 0.4)',
                     borderRadius: '12px',
                     padding: '2.5rem 1.5rem',
                     textAlign: 'center',
-                    boxShadow: '0 0 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(255, 0, 60, 0.1)',
+                    boxShadow: '0 0 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(222, 6, 6, 0.1)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -1024,17 +1342,17 @@ const AdminDashboard = () => {
                   }}>
                     {/* College Banner Preview */}
                     <div style={{
-                      border: '1px solid rgba(255, 0, 60, 0.55)',
+                      border: '1px solid rgba(222, 6, 6, 0.55)',
                       padding: '0.5rem 1.5rem',
                       marginBottom: '1.2rem',
                       background: 'rgba(15, 10, 14, 0.8)',
                       borderRadius: '4px',
-                      boxShadow: '0 0 15px rgba(255, 0, 60, 0.2)'
+                      boxShadow: '0 0 15px rgba(222, 6, 6, 0.2)'
                     }}>
                       <div style={{ fontSize: '0.78rem', color: '#ffffff', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase' }}>
                         {brandingData.collegeName || 'COLLEGE NAME'}
                       </div>
-                      <div style={{ fontSize: '0.68rem', color: '#ff003c', marginTop: '2px', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                      <div style={{ fontSize: '0.68rem', color: '#de0606', marginTop: '2px', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
                         {brandingData.departmentName || 'DEPARTMENT NAME'}
                       </div>
                     </div>
@@ -1047,7 +1365,7 @@ const AdminDashboard = () => {
                       fontWeight: '900',
                       letterSpacing: '6px',
                       lineHeight: 1.1,
-                      textShadow: '0 0 15px rgba(255, 255, 255, 0.6), 0 0 30px rgba(255, 0, 60, 0.8)'
+                      textShadow: '0 0 15px rgba(255, 255, 255, 0.6), 0 0 30px rgba(222, 6, 6, 0.8)'
                     }}>
                       {brandingData.mainTitle || 'MAIN TITLE'}
                     </div>
@@ -1055,12 +1373,12 @@ const AdminDashboard = () => {
                     {/* Association Title Preview */}
                     <div style={{
                       fontSize: '1.3rem',
-                      color: '#ff003c',
+                      color: '#de0606',
                       fontFamily: 'var(--font-orbitron)',
                       fontWeight: '800',
                       letterSpacing: '8px',
                       marginBottom: '1rem',
-                      textShadow: '0 0 20px rgba(255, 0, 60, 0.9)'
+                      textShadow: '0 0 20px rgba(222, 6, 6, 0.9)'
                     }}>
                       {brandingData.associationTitle || 'ASSOCIATION'}
                     </div>
@@ -1071,16 +1389,16 @@ const AdminDashboard = () => {
                       alignItems: 'center',
                       gap: '6px',
                       padding: '4px 12px',
-                      background: 'rgba(255, 0, 60, 0.08)',
-                      border: '1px solid rgba(255, 0, 60, 0.25)',
+                      background: 'rgba(222, 6, 6, 0.08)',
+                      border: '1px solid rgba(222, 6, 6, 0.25)',
                       borderRadius: '16px',
                       marginBottom: '1.4rem'
                     }}>
-                      <span style={{ color: '#ff003c', fontSize: '0.7rem' }}>✦</span>
+                      <span style={{ color: '#de0606', fontSize: '0.7rem' }}>✦</span>
                       <span style={{ color: '#e2e8f0', fontSize: '0.68rem', letterSpacing: '2px', textTransform: 'uppercase' }}>
                         {brandingData.tagline || 'EVENT TAGLINE'}
                       </span>
-                      <span style={{ color: '#ff003c', fontSize: '0.7rem' }}>✦</span>
+                      <span style={{ color: '#de0606', fontSize: '0.7rem' }}>✦</span>
                     </div>
 
                     {/* Button Preview */}
@@ -1172,8 +1490,8 @@ const AdminDashboard = () => {
                   Total: <strong style={{ color: 'var(--accent-cyan)' }}>{questionsList.length}</strong> | 
                   Easy: <strong style={{ color: '#10B981' }}>{questionsList.filter(q => (q.category || 'Easy') === 'Easy').length}</strong> | 
                   Medium: <strong style={{ color: '#F59E0B' }}>{questionsList.filter(q => q.category === 'Medium').length}</strong> | 
-                  Hard: <strong style={{ color: '#FF003C' }}>{questionsList.filter(q => q.category === 'Hard').length}</strong> | 
-                  Random Assignment: <strong style={{ color: '#00F0FF' }}>{questionsPerStudent} per student</strong>
+                  Hard: <strong style={{ color: '#de0606' }}>{questionsList.filter(q => q.category === 'Hard').length}</strong> | 
+                  Random Assignment: <strong style={{ color: '#007fd7' }}>{questionsPerStudent} per student</strong>
                 </p>
               </div>
 
@@ -1305,10 +1623,10 @@ const AdminDashboard = () => {
                     <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem', alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.8rem' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Category:</span>
                       {[
-                        { label: 'ALL', count: questionsList.length, color: '#00f0ff' },
+                        { label: 'ALL', count: questionsList.length, color: '#007fd7' },
                         { label: 'Easy', count: questionsList.filter(q => (q.category || 'Easy') === 'Easy').length, color: '#10B981' },
                         { label: 'Medium', count: questionsList.filter(q => q.category === 'Medium').length, color: '#F59E0B' },
-                        { label: 'Hard', count: questionsList.filter(q => q.category === 'Hard').length, color: '#FF003C' }
+                        { label: 'Hard', count: questionsList.filter(q => q.category === 'Hard').length, color: '#de0606' }
                       ].map(cat => (
                         <button
                           key={cat.label}
@@ -1367,8 +1685,8 @@ const AdminDashboard = () => {
                   <div style={{ display: 'grid', gap: '1rem' }}>
                     {filteredQuestionsList.map(q => {
                       const cat = q.category || 'Easy';
-                      const badgeColor = cat === 'Hard' ? '#FF003C' : cat === 'Medium' ? '#F59E0B' : '#10B981';
-                      const badgeBg = cat === 'Hard' ? 'rgba(255, 0, 60, 0.15)' : cat === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)';
+                      const badgeColor = cat === 'Hard' ? '#de0606' : cat === 'Medium' ? '#F59E0B' : '#10B981';
+                      const badgeBg = cat === 'Hard' ? 'rgba(222, 6, 6, 0.15)' : cat === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)';
                       return (
                         <div key={q.id} style={{ padding: '1rem', border: '1px solid var(--border-subtle)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
@@ -1385,7 +1703,7 @@ const AdminDashboard = () => {
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <button onClick={() => handleEditQuestion(q)} className="btn-secondary" style={{ padding: '5px 10px', fontSize: '0.8rem', color: 'var(--accent-cyan)', border: '1px solid var(--accent-cyan)' }}><Edit size={16} /></button>
-                            <button onClick={async () => { if(window.confirm('Delete question?')) await deleteDoc(doc(db, 'questions', q.id)) }} className="btn-secondary" style={{ padding: '5px 10px', fontSize: '0.8rem', color: 'var(--accent-magenta)', border: '1px solid var(--accent-magenta)' }}><Trash2 size={16} /></button>
+                            <button onClick={() => handleDeleteSingleQuestion(q.id, q.title)} className="btn-secondary" style={{ padding: '5px 10px', fontSize: '0.8rem', color: 'var(--accent-magenta)', border: '1px solid var(--accent-magenta)' }}><Trash2 size={16} /></button>
                           </div>
                         </div>
                       );
@@ -1451,13 +1769,13 @@ const AdminDashboard = () => {
                   <tbody>
                     {liveUsers.map(u => {
                       const userCat = u.category || 'Easy';
-                      const badgeColor = userCat === 'Hard' ? '#FF003C' : userCat === 'Medium' ? '#F59E0B' : '#10B981';
-                      const badgeBg = userCat === 'Hard' ? 'rgba(255, 0, 60, 0.15)' : userCat === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)';
+                      const badgeColor = userCat === 'Hard' ? '#de0606' : userCat === 'Medium' ? '#F59E0B' : '#10B981';
+                      const badgeBg = userCat === 'Hard' ? 'rgba(222, 6, 6, 0.15)' : userCat === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)';
                       return (
                       <tr key={u.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                         <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span>{u.rollNo}</span>
-                          <span style={{ padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem', background: 'rgba(0, 240, 255, 0.15)', color: '#00f0ff', border: '1px solid #00f0ff' }}>UG</span>
+                          <span style={{ padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem', background: 'rgba(0, 127, 215, 0.15)', color: '#007fd7', border: '1px solid #007fd7' }}>UG</span>
                         </td>
                         <td style={{ padding: '1rem' }}>{u.name}</td>
                         <td style={{ padding: '1rem' }}>
@@ -1480,7 +1798,7 @@ const AdminDashboard = () => {
                         </td>
                         <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem' }}>
                           <button onClick={() => handleEditUser(u)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer' }}><Edit size={18} /></button>
-                          <button onClick={async () => { if(window.confirm('Delete user?')) await deleteDoc(doc(db, 'users', u.id)) }} style={{ background: 'transparent', border: 'none', color: 'var(--accent-magenta)', cursor: 'pointer' }}><Trash2 size={18} /></button>
+                          <button onClick={() => handleDeleteUser(u.id, u.name)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-magenta)', cursor: 'pointer' }}><Trash2 size={18} /></button>
                         </td>
                       </tr>
                     );
@@ -1501,7 +1819,7 @@ const AdminDashboard = () => {
             </h3>
 
             {/* Random Question Count Setting */}
-            <div style={{ background: 'rgba(0, 240, 255, 0.05)', border: '1px solid var(--accent-cyan)', borderRadius: '8px', padding: '1.2rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ background: 'rgba(0, 127, 215, 0.05)', border: '1px solid var(--accent-cyan)', borderRadius: '8px', padding: '1.2rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
                 <h4 className="glow-text-cyan" style={{ margin: '0 0 4px 0', fontSize: '1rem' }}>🎯 RANDOM QUESTIONS PER STUDENT (CATEGORY-WISE)</h4>
                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
@@ -1548,7 +1866,7 @@ const AdminDashboard = () => {
         return (
           <div className="glass-panel" style={{ padding: '2rem' }}>
             <h2 className="glow-text-cyan" style={{ marginBottom: '1.5rem' }}>C++ LANGUAGE & COMPILER CONFIGURATION</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>The debugging competition consists of <strong>C++ Language</strong> (5 questions per participant). Configure the Online Compiler API below.</p>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>The debugging competition consists of <strong>C++ Language</strong> ({questionsPerStudent} questions per participant). Configure the Online Compiler API below.</p>
             
             <form onSubmit={handleSavePhaseLanguages} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px', marginBottom: '3rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '2.5rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'center' }}>
@@ -1585,7 +1903,7 @@ const AdminDashboard = () => {
               C & C++ compilation uses the OnlineCompiler.io execution engine with automatic key rotation and instant failover across the entire key pool whenever a key finishes its quota.
             </p>
 
-            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep-navy)', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid var(--accent-cyan)', marginBottom: '1.5rem', boxShadow: '0 0 15px rgba(0, 240, 255, 0.1)' }}>
+            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-deep-navy)', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid var(--accent-cyan)', marginBottom: '1.5rem', boxShadow: '0 0 15px rgba(0, 127, 215, 0.1)' }}>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Total Failover Pool</span>
                 <span style={{ color: 'var(--accent-cyan)', fontWeight: 'bold', fontSize: '1.4rem' }}>
@@ -1877,7 +2195,7 @@ const AdminDashboard = () => {
                       ? questionsList.length
                       : questionsList.filter(q => (q.category || (parseQuestionErrors(q).totalErrors === 1 ? 'Easy' : parseQuestionErrors(q).totalErrors === 2 ? 'Medium' : 'Hard')) === cat).length;
                     const isActive = pointCategoryFilter === cat;
-                    const catColor = cat === 'Easy' ? '#00f59b' : cat === 'Medium' ? '#f59e0b' : cat === 'Hard' ? '#ff003c' : 'var(--accent-cyan)';
+                    const catColor = cat === 'Easy' ? '#00f59b' : cat === 'Medium' ? '#f59e0b' : cat === 'Hard' ? '#de0606' : 'var(--accent-cyan)';
                     return (
                       <button
                         key={cat}
@@ -1886,7 +2204,7 @@ const AdminDashboard = () => {
                           padding: '6px 14px',
                           borderRadius: '6px',
                           border: isActive ? `1px solid ${catColor}` : '1px solid transparent',
-                          background: isActive ? (cat === 'ALL' ? 'var(--accent-cyan)' : cat === 'Easy' ? 'rgba(0, 245, 155, 0.2)' : cat === 'Medium' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255, 0, 60, 0.2)') : 'transparent',
+                          background: isActive ? (cat === 'ALL' ? 'var(--accent-cyan)' : cat === 'Easy' ? 'rgba(0, 245, 155, 0.2)' : cat === 'Medium' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(222, 6, 6, 0.2)') : 'transparent',
                           color: isActive ? (cat === 'ALL' ? '#000000' : catColor) : 'var(--text-secondary)',
                           fontWeight: 'bold',
                           fontSize: '0.82rem',
@@ -1960,14 +2278,14 @@ const AdminDashboard = () => {
                                   textTransform: 'uppercase',
                                   display: 'inline-block',
                                   marginTop: '3px',
-                                  background: u.category === 'Easy' ? 'rgba(0, 245, 155, 0.15)' : u.category === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 0, 60, 0.15)',
-                                  color: u.category === 'Easy' ? '#00f59b' : u.category === 'Medium' ? '#f59e0b' : '#ff003c',
-                                  border: `1px solid ${u.category === 'Easy' ? 'rgba(0, 245, 155, 0.3)' : u.category === 'Medium' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 0, 60, 0.3)'}`
+                                  background: u.category === 'Easy' ? 'rgba(0, 245, 155, 0.15)' : u.category === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(222, 6, 6, 0.15)',
+                                  color: u.category === 'Easy' ? '#00f59b' : u.category === 'Medium' ? '#f59e0b' : '#de0606',
+                                  border: `1px solid ${u.category === 'Easy' ? 'rgba(0, 245, 155, 0.3)' : u.category === 'Medium' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(222, 6, 6, 0.3)'}`
                                 }}>
                                   {u.category}
                                 </span>
                               ) : (
-                                <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255, 0, 60, 0.1)', color: '#ff4d6d', border: '1px solid rgba(255, 0, 60, 0.3)' }}>
+                                <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(222, 6, 6, 0.1)', color: '#ff4d6d', border: '1px solid rgba(222, 6, 6, 0.3)' }}>
                                   {u.degreeCategory || 'UG'}
                                 </span>
                               )}
@@ -1977,7 +2295,7 @@ const AdminDashboard = () => {
                                 {u.score || 0} PTS
                               </div>
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-                                {(u.completedQuestions || []).length} / {(u.assignedQuestions && u.assignedQuestions.length) ? u.assignedQuestions.length : questionsPerStudent} Completed
+                                {(u.completedQuestions || u.completed_questions || []).length} / {(u.assigned_question_ids?.length || u.assignedQuestionIds?.length || (Array.isArray(u.assignedQuestions?.cpp) ? u.assignedQuestions.cpp.length : (Array.isArray(u.assignedQuestions) ? u.assignedQuestions.length : questionsPerStudent)))} Completed
                               </div>
                               {u.tabSwitches > 0 && (
                                 <div style={{ fontSize: '0.7rem', color: '#ff4d6d', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
@@ -2015,7 +2333,7 @@ const AdminDashboard = () => {
                             </td>
                             <td style={{ padding: '12px 10px' }}>
                               {isWorking ? (
-                                <div style={{ background: 'rgba(0, 240, 255, 0.06)', border: '1px solid rgba(0, 240, 255, 0.3)', padding: '8px 10px', borderRadius: '6px' }}>
+                                <div style={{ background: 'rgba(0, 127, 215, 0.06)', border: '1px solid rgba(0, 127, 215, 0.3)', padding: '8px 10px', borderRadius: '6px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-cyan)', fontSize: '0.78rem', fontWeight: 'bold' }}>
                                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-cyan)', display: 'inline-block' }}></span>
                                     CURRENTLY EDITING
@@ -2087,9 +2405,9 @@ const AdminDashboard = () => {
                         const isEasy = cat === 'Easy';
                         const isMed = cat === 'Medium';
                         const isHard = cat === 'Hard';
-                        const color = isEasy ? '#00f59b' : isMed ? '#f59e0b' : '#ff003c';
-                        const bg = isEasy ? 'rgba(0, 245, 155, 0.15)' : isMed ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 0, 60, 0.15)';
-                        const border = isEasy ? 'rgba(0, 245, 155, 0.35)' : isMed ? 'rgba(245, 158, 11, 0.35)' : 'rgba(255, 0, 60, 0.35)';
+                        const color = isEasy ? '#00f59b' : isMed ? '#f59e0b' : '#de0606';
+                        const bg = isEasy ? 'rgba(0, 245, 155, 0.15)' : isMed ? 'rgba(245, 158, 11, 0.15)' : 'rgba(222, 6, 6, 0.15)';
+                        const border = isEasy ? 'rgba(0, 245, 155, 0.35)' : isMed ? 'rgba(245, 158, 11, 0.35)' : 'rgba(222, 6, 6, 0.35)';
 
                         return (
                           <tr key={q.id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: idx % 2 === 0 ? 'rgba(0,0,0,0.1)' : 'transparent' }}>
@@ -2124,7 +2442,7 @@ const AdminDashboard = () => {
                               <span style={{ 
                                 padding: '4px 10px', 
                                 borderRadius: '12px', 
-                                background: meta.totalErrors === 1 ? 'rgba(0, 245, 155, 0.15)' : meta.totalErrors === 2 ? 'rgba(0, 240, 255, 0.15)' : 'rgba(255, 0, 60, 0.15)',
+                                background: meta.totalErrors === 1 ? 'rgba(0, 245, 155, 0.15)' : meta.totalErrors === 2 ? 'rgba(0, 127, 215, 0.15)' : 'rgba(222, 6, 6, 0.15)',
                                 color: meta.totalErrors === 1 ? '#00f59b' : meta.totalErrors === 2 ? 'var(--accent-cyan)' : '#ff4d6d',
                                 fontWeight: 'bold',
                                 fontSize: '0.82rem'
@@ -2261,7 +2579,7 @@ const AdminDashboard = () => {
               <div style={{ display: 'flex', gap: '1rem', background: 'var(--bg-deep-navy)', padding: '0.6rem 1.2rem', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                 <span style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>Total Submissions: {totalSubs}</span>
                 <span style={{ color: 'var(--text-secondary)' }}>|</span>
-                <span>Language: <strong>C++ (5 Missions)</strong></span>
+                <span>Language: <strong>C++ ({questionsPerStudent} Missions)</strong></span>
               </div>
             </div>
 
@@ -2277,7 +2595,8 @@ const AdminDashboard = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                     {submittedUsers.map(user => {
                       const isSel = user.id === selectedSubUserId;
-                      const uSubsCount = user.totalSubmissionsCount || Object.keys(user.submissions || {}).length || 0;
+                      const targetQuestions = user.assigned_question_ids?.length || user.assignedQuestionIds?.length || (Array.isArray(user.assignedQuestions?.cpp) ? user.assignedQuestions.cpp.length : (Array.isArray(user.assignedQuestions) ? user.assignedQuestions.length : questionsPerStudent)) || questionsPerStudent || 2;
+                      const uSubsCount = (user.completedQuestions || user.completed_questions || []).length || user.totalSubmissionsCount || user.total_submissions_count || Object.keys(user.submissions || {}).length || 0;
                       return (
                         <div
                           key={user.id}
@@ -2289,7 +2608,7 @@ const AdminDashboard = () => {
                           style={{
                             padding: '1rem',
                             borderRadius: '8px',
-                            background: isSel ? 'rgba(0, 240, 255, 0.12)' : 'var(--bg-deep-navy)',
+                            background: isSel ? 'rgba(0, 127, 215, 0.12)' : 'var(--bg-deep-navy)',
                             border: isSel ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
                             cursor: 'pointer',
                             transition: 'all 0.2s'
@@ -2305,7 +2624,7 @@ const AdminDashboard = () => {
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                             <span>Time: {user.elapsedTimeMs ? `${Math.floor(user.elapsedTimeMs / 60000)}m ${Math.floor((user.elapsedTimeMs % 60000) / 1000)}s` : 'N/A'}</span>
-                            <span>Missions Solved: <strong>{uSubsCount}/5</strong></span>
+                            <span>Missions Solved: <strong>{uSubsCount}/{targetQuestions}</strong></span>
                           </div>
                         </div>
                       );
@@ -2530,17 +2849,14 @@ const AdminDashboard = () => {
                         <img src="/dept-logo.png" alt="Dept Logo" style={{ width: '90px', height: '90px', objectFit: 'contain' }} />
                       </div>
 
-                      {/* Department, Event & Sheet Title Subheading */}
-                      <div className="avoid-break" style={{ textAlign: 'center', marginBottom: '1.6rem', color: 'black', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                      {/* Department & Event Title Subheading */}
+                      <div className="avoid-break" style={{ textAlign: 'center', marginBottom: '1.2rem', color: 'black', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                         <div style={{ fontWeight: '800', fontSize: '1.12rem', margin: '0 0 0.35rem 0', color: 'black', letterSpacing: '0.5px' }}>
                           DEPARTMENT OF COMPUTER APPLICATIONS
                         </div>
-                        <h2 style={{ fontSize: '1.35rem', fontWeight: 'bold', margin: '0 0 0.4rem 0', color: 'black', textTransform: 'uppercase' }}>
+                        <h2 style={{ fontSize: '12pt', fontWeight: 'bold', margin: 0, color: 'black', textTransform: 'uppercase' }}>
                           {reportEventName}
                         </h2>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: 'black', textDecoration: 'underline' }}>
-                          {reportType === 'scoresheet' ? 'UG ScoreSheet' : 'Top 3 UG Winners'}
-                        </h3>
                       </div>
                     </>
                   )}
@@ -2670,7 +2986,7 @@ const AdminDashboard = () => {
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <div
                       className="btn-primary"
-                      style={{ flex: 1, padding: '8px 10px', fontSize: '0.82rem', borderColor: '#00f0ff', color: '#040711', background: '#00f0ff', textAlign: 'center', fontWeight: 'bold' }}
+                      style={{ flex: 1, padding: '8px 10px', fontSize: '0.82rem', borderColor: '#007fd7', color: '#040711', background: '#007fd7', textAlign: 'center', fontWeight: 'bold' }}
                     >
                       UG (UNDERGRADUATE) — {ugCount} PARTICIPANTS
                     </div>
@@ -2701,7 +3017,7 @@ const AdminDashboard = () => {
                   {/* Grid of signature cards for each title */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1.2rem' }}>
                     {judgeSignatures.map((sig, i) => (
-                      <div key={i} style={{ background: 'rgba(0, 240, 255, 0.05)', border: '1px solid rgba(0, 240, 255, 0.2)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                      <div key={i} style={{ background: 'rgba(0, 127, 215, 0.05)', border: '1px solid rgba(0, 127, 215, 0.2)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>✍️ {sig}</strong>
                           <button onClick={() => handleRemoveJudgeSig(i)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-pink)', cursor: 'pointer', padding: 0 }} title="Remove this signature box">
@@ -2764,7 +3080,7 @@ const AdminDashboard = () => {
   return (
     <>
       <LoadingOverlay isLoading={isLoading} />
-      {popup && <PopupMessage message={popup.message} type={popup.type} onClose={() => setPopup(null)} />}
+      {popup && <PopupMessage message={popup.message} type={popup.type} onClose={() => setPopup(null)} onConfirm={popup.onConfirm} />}
 
       {/* ── TOP-LEVEL BULK UPLOAD MODAL (FULL VIEWPORT CENTERED) ── */}
       {isBulkModalOpen && (
@@ -2797,7 +3113,7 @@ const AdminDashboard = () => {
               background: '#070f24', 
               border: '2px solid var(--accent-cyan)', 
               borderRadius: '16px', 
-              boxShadow: '0 0 50px rgba(0, 240, 255, 0.4), inset 0 0 20px rgba(0, 240, 255, 0.05)', 
+              boxShadow: '0 0 50px rgba(0, 127, 215, 0.4), inset 0 0 20px rgba(0, 127, 215, 0.05)', 
               display: 'flex', 
               flexDirection: 'column', 
               overflow: 'hidden',
@@ -2805,7 +3121,7 @@ const AdminDashboard = () => {
             }}
           >
             {/* Modal Header */}
-            <div style={{ padding: '1.2rem 1.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0, 240, 255, 0.2)', background: 'rgba(0, 240, 255, 0.04)' }}>
+            <div style={{ padding: '1.2rem 1.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0, 127, 215, 0.2)', background: 'rgba(0, 127, 215, 0.04)' }}>
               <div>
                 <h3 className="glow-text-cyan" style={{ margin: 0, fontSize: '1.35rem', letterSpacing: '1px' }}>
                   📥 BULK UPLOAD QUESTIONS (JSON)
@@ -2885,13 +3201,13 @@ const AdminDashboard = () => {
                   rows="11"
                   value={bulkJsonInput}
                   onChange={(e) => setBulkJsonInput(e.target.value)}
-                  placeholder='[&#10;  {&#10;    "title": "Bug Title",&#10;    "phase": "c",&#10;    "description": "Bug description...",&#10;    "expectedOutput": "Expected console output",&#10;    "points": 100,&#10;    "variants": {&#10;      "c": {&#10;        "initialCode": "...",&#10;        "correctCode": "...",&#10;        "errorLines": "2, 5|14"&#10;      }&#10;    }&#10;  }&#10;]'
+                  placeholder='[&#10;  {&#10;    "title": "C++ Bug Title",&#10;    "phase": "cpp",&#10;    "description": "Bug description...",&#10;    "expectedOutput": "Expected console output",&#10;    "points": 100,&#10;    "variants": {&#10;      "cpp": {&#10;        "initialCode": "...",&#10;        "correctCode": "...",&#10;        "errorLines": "2, 5|14"&#10;      }&#10;    }&#10;  }&#10;]'
                   style={{ 
                     fontFamily: 'Consolas, Monaco, "Courier New", monospace', 
                     fontSize: '0.84rem', 
                     background: '#030816',
-                    border: '1px solid rgba(0, 240, 255, 0.3)',
-                    color: '#00f0ff',
+                    border: '1px solid rgba(0, 127, 215, 0.3)',
+                    color: '#007fd7',
                     lineHeight: '1.5',
                     borderRadius: '8px',
                     padding: '12px',
@@ -2902,7 +3218,7 @@ const AdminDashboard = () => {
               </div>
 
               {bulkImportProgress && (
-                <div style={{ padding: '10px 14px', background: 'rgba(0, 240, 255, 0.1)', border: '1px solid var(--accent-cyan)', borderRadius: '8px', color: 'var(--accent-cyan)', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ padding: '10px 14px', background: 'rgba(0, 127, 215, 0.1)', border: '1px solid var(--accent-cyan)', borderRadius: '8px', color: 'var(--accent-cyan)', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
                   <span>{bulkImportProgress}</span>
                 </div>
@@ -2910,7 +3226,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* Modal Footer */}
-            <div style={{ padding: '1rem 1.8rem', borderTop: '1px solid rgba(0, 240, 255, 0.2)', background: 'rgba(3, 7, 20, 0.95)', display: 'flex', justifyContent: 'flex-end', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ padding: '1rem 1.8rem', borderTop: '1px solid rgba(0, 127, 215, 0.2)', background: 'rgba(3, 7, 20, 0.95)', display: 'flex', justifyContent: 'flex-end', gap: '1rem', alignItems: 'center' }}>
               <button
                 type="button"
                 onClick={() => { setIsBulkModalOpen(false); setBulkJsonInput(''); setBulkImportProgress(''); setLoadedFileName(''); }}
@@ -2928,7 +3244,7 @@ const AdminDashboard = () => {
                   padding: '10px 26px', 
                   fontSize: '0.92rem', 
                   fontWeight: 'bold',
-                  boxShadow: '0 0 20px rgba(0, 240, 255, 0.4)',
+                  boxShadow: '0 0 20px rgba(0, 127, 215, 0.4)',
                   cursor: (!bulkJsonInput.trim() || isLoading) ? 'not-allowed' : 'pointer'
                 }}
               >

@@ -15,11 +15,12 @@ app.use(express.json({ limit: '5mb' }));
 const DEFAULT_API_KEY = process.env.ONLINE_COMPILER_API_KEY || 'ccb79ad09699924cb025d0ba0b6690ed';
 
 // ── Pool of OnlineCompiler.io API Keys (Supports multiple keys with automatic failover) ──
-// If a key reaches its daily quota or returns 429/Limit Exceeded, the compiler seamlessly fails over to the next key.
 let ONLINE_COMPILER_KEYS = [
+  "a6ed2c1539a350079a242c2c2deecc36",
   "ccb79ad09699924cb025d0ba0b6690ed",
-  "28152502bdcf827c763a92f0bf7ed806",
-  "42084204b0195f78ed851ac35c43a059"
+  "8471946023c357608b7666f763b66d9e",
+  "00f2e3686a1712e01b8fa42d4ff76635",
+  "31f89d72d1ae6013e4925c06bac75502"
 ];
 
 let ONLINE_COMPILER_KEY_STATUS = {};
@@ -63,47 +64,63 @@ app.post(['/api/onlinecompiler/status', '/api/compiler/status'], async (req, res
   const customKeys = Array.isArray(req.body?.keys) ? req.body.keys : [];
   const allUnique = getAllOnlineCompilerKeys(customKeys);
 
-  const results = await Promise.all(allUnique.map(async (key) => {
+  const results = [];
+  for (const key of allUnique) {
     let status = 'active';
     let errorReason = null;
     let used = ONLINE_COMPILER_KEY_STATUS[key]?.used || 0;
 
-    try {
-      // Test the API key with a lightweight C execution ping
-      const resp = await axios.post('https://api.onlinecompiler.io/api/run-code-sync/', {
-        compiler: 'gcc-15',
-        code: 'int main(){return 0;}',
-        input: ''
-      }, {
-        timeout: 9000,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': key,
-          'ApiKey': key
-        }
-      });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const resp = await axios.post('https://api.onlinecompiler.io/api/run-code-sync/', {
+          compiler: 'gcc-15',
+          code: 'int main(){return 0;}',
+          input: ''
+        }, {
+          timeout: 9000,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': key,
+            'ApiKey': key
+          }
+        });
 
-      const errCheck = ((resp.data?.error || '') + ' ' + (resp.data?.message || '')).toLowerCase();
-      if (
-        resp.status === 429 || resp.status === 401 || resp.status === 403 ||
-        errCheck.includes('limit') || errCheck.includes('quota') || errCheck.includes('invalid') || errCheck.includes('unauthorized')
-      ) {
-        status = 'exhausted';
-        errorReason = resp.data?.error || resp.data?.message || 'Quota Limit Exceeded';
-      } else {
-        status = 'active';
-        errorReason = null;
-      }
-    } catch (err) {
-      const errMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message || '';
-      const errStatus = err?.response?.status;
-      if (errStatus === 429 || errStatus === 401 || errStatus === 403 || errMsg.toLowerCase().includes('limit') || errMsg.toLowerCase().includes('quota')) {
-        status = 'exhausted';
-        errorReason = errMsg || `HTTP ${errStatus} Quota Reached`;
-      } else {
-        // Network timeout / transient issue, keep current status
-        status = ONLINE_COMPILER_KEY_STATUS[key]?.status || 'active';
-        errorReason = null;
+        const errCheck = ((resp.data?.error || '') + ' ' + (resp.data?.message || '')).toLowerCase();
+        if (errCheck.includes('concurrent') || errCheck.includes('too many')) {
+          await new Promise(r => setTimeout(r, 350));
+          continue;
+        }
+
+        if (
+          resp.status === 401 || resp.status === 403 ||
+          errCheck.includes('limit exceeded') || errCheck.includes('quota') || errCheck.includes('daily limit') ||
+          errCheck.includes('invalid api key') || errCheck.includes('unauthorized')
+        ) {
+          status = 'exhausted';
+          errorReason = resp.data?.error || resp.data?.message || 'Quota Limit Exceeded';
+        } else {
+          status = 'active';
+          errorReason = null;
+        }
+        break;
+      } catch (err) {
+        const errMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message || '';
+        const errStatus = err?.response?.status;
+        const errCheck = errMsg.toLowerCase();
+
+        if (errCheck.includes('concurrent') || errCheck.includes('too many')) {
+          await new Promise(r => setTimeout(r, 350));
+          continue;
+        }
+
+        if (errStatus === 401 || errStatus === 403 || errCheck.includes('limit exceeded') || errCheck.includes('quota') || errCheck.includes('daily limit')) {
+          status = 'exhausted';
+          errorReason = errMsg || `HTTP ${errStatus} Quota Limit`;
+        } else {
+          status = ONLINE_COMPILER_KEY_STATUS[key]?.status || 'active';
+          errorReason = null;
+        }
+        break;
       }
     }
 
@@ -114,13 +131,15 @@ app.post(['/api/onlinecompiler/status', '/api/compiler/status'], async (req, res
       lastChecked: Date.now()
     };
 
-    return {
+    results.push({
       apiKey: key,
       status,
       used,
       errorReason
-    };
-  }));
+    });
+
+    await new Promise(r => setTimeout(r, 250));
+  }
 
   const active = results.filter(r => r.status === 'active');
   const exhausted = results.filter(r => r.status === 'exhausted');

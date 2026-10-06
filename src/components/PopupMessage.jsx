@@ -4,23 +4,28 @@ import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
 const PopupMessage = ({ message, type = 'info', onClose, onConfirm }) => {
   if (!message) return null;
 
-  let borderColor = '#ff003c';
-  let glowColor = 'rgba(255, 0, 60, 0.45)';
+  let borderColor = '#007fd7';
+  let glowColor = 'rgba(0, 127, 215, 0.45)';
   let Icon = Info;
 
   if (type === 'error') {
-    borderColor = '#ff003c';
-    glowColor = 'rgba(255, 0, 60, 0.6)';
+    borderColor = '#de0606';
+    glowColor = 'rgba(222, 6, 6, 0.6)';
     Icon = AlertCircle;
   } else if (type === 'success') {
     borderColor = '#00f59b';
     glowColor = 'rgba(0, 245, 155, 0.45)';
     Icon = CheckCircle2;
   } else if (type === 'warning') {
-    borderColor = '#ff003c';
-    glowColor = 'rgba(255, 0, 60, 0.5)';
+    borderColor = '#de0606';
+    glowColor = 'rgba(222, 6, 6, 0.5)';
     Icon = AlertCircle;
   }
+
+  const isPositive = type === 'success' || type === 'info';
+  const iconBg = isPositive 
+    ? (type === 'success' ? 'rgba(0, 245, 155, 0.12)' : 'rgba(0, 127, 215, 0.12)')
+    : 'rgba(222, 6, 6, 0.12)';
 
   return (
     <div style={{
@@ -29,8 +34,8 @@ const PopupMessage = ({ message, type = 'info', onClose, onConfirm }) => {
       left: 0,
       width: '100%',
       height: '100%',
-      backgroundColor: 'rgba(6, 6, 8, 0.85)',
-      backdropFilter: 'blur(6px)',
+      backgroundColor: 'rgba(6, 6, 8, 0.88)',
+      backdropFilter: 'blur(8px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -38,9 +43,9 @@ const PopupMessage = ({ message, type = 'info', onClose, onConfirm }) => {
       animation: 'fadeIn 0.2s ease-out forwards'
     }}>
       <div style={{
-        background: 'rgba(18, 18, 24, 0.95)',
-        border: `1px solid ${borderColor}`,
-        boxShadow: `0 0 35px ${glowColor}`,
+        background: '#0a0a0e',
+        border: `1.5px solid ${borderColor}`,
+        boxShadow: `0 0 35px ${glowColor}, inset 0 0 15px rgba(63, 63, 63, 0.3)`,
         borderRadius: 'var(--radius-md)',
         padding: '2.5rem',
         maxWidth: '460px',
@@ -53,12 +58,12 @@ const PopupMessage = ({ message, type = 'info', onClose, onConfirm }) => {
             display: 'inline-flex',
             padding: '14px',
             borderRadius: '50%',
-            background: type === 'success' ? 'rgba(0, 245, 155, 0.12)' : 'rgba(255, 0, 60, 0.12)',
-            border: `1px solid ${borderColor}`,
+            background: iconBg,
+            border: `1.5px solid ${borderColor}`,
             color: borderColor,
             boxShadow: `0 0 15px ${glowColor}`
           }}>
-            <Icon size={40} />
+            <Icon size={38} />
           </div>
         </div>
         <h3 style={{ 
@@ -78,9 +83,9 @@ const PopupMessage = ({ message, type = 'info', onClose, onConfirm }) => {
               className="btn-secondary" 
               style={{
                 flex: 1,
-                background: 'rgba(255, 255, 255, 0.08)',
-                color: '#ffffff',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
+                background: 'rgba(63, 63, 63, 0.4)',
+                color: '#e2e2e2',
+                border: '1px solid #3f3f3f',
                 fontWeight: '700',
                 padding: '12px 20px',
                 letterSpacing: '1px',
@@ -94,14 +99,14 @@ const PopupMessage = ({ message, type = 'info', onClose, onConfirm }) => {
               className="btn-primary" 
               style={{
                 flex: 1,
-                background: 'linear-gradient(135deg, #ff003c 0%, #b7002b 100%)',
+                background: 'linear-gradient(135deg, #de0606 0%, #ac0202 100%)',
                 color: '#ffffff',
-                border: '1px solid rgba(255, 255, 255, 0.35)',
+                border: '1px solid rgba(226, 226, 226, 0.25)',
                 fontWeight: '800',
                 padding: '12px 20px',
                 letterSpacing: '1px',
                 fontSize: '0.95rem',
-                boxShadow: '0 0 20px rgba(255, 0, 60, 0.55)'
+                boxShadow: '0 0 20px rgba(222, 6, 6, 0.5)'
               }}
             >
               CONFIRM
@@ -113,14 +118,14 @@ const PopupMessage = ({ message, type = 'info', onClose, onConfirm }) => {
             className="btn-primary" 
             style={{
               width: '100%',
-              background: 'linear-gradient(135deg, #ff003c 0%, #b7002b 100%)',
+              background: 'linear-gradient(135deg, #de0606 0%, #ac0202 100%)',
               color: '#ffffff',
-              border: '1px solid rgba(255, 255, 255, 0.35)',
+              border: '1px solid rgba(226, 226, 226, 0.25)',
               fontWeight: '800',
               padding: '12px 20px',
               letterSpacing: '1px',
               fontSize: '0.95rem',
-              boxShadow: '0 0 20px rgba(255, 0, 60, 0.55)'
+              boxShadow: '0 0 20px rgba(222, 6, 6, 0.5)'
             }}
           >
             ACKNOWLEDGE

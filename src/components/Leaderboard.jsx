@@ -1,28 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from '../firebase';
-import { collection, getDocs } from 'firebase/firestore';
-import { sortParticipants, getStudentCategory, getSortedParticipantsByCategory } from '../utils/ranking';
-import { Trophy, Sparkles, GraduationCap, Award } from 'lucide-react';
+import { supabase } from '../supabase';
+import { getSortedParticipantsByCategory } from '../utils/ranking';
+import { Sparkles } from 'lucide-react';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'];
 
 const Leaderboard = () => {
   const [allUsers, setAllUsers] = useState([]);
-  const [categoryFilter, setCategoryFilter] = useState('ALL'); // 'ALL', 'UG', 'PG'
   const [loading, setLoading] = useState(true);
   const [revealed, setRevealed] = useState(false);
 
   const fetchLeaderboard = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, 'users'));
-      const fetchedUsers = [];
-      querySnapshot.forEach((doc) => {
-        fetchedUsers.push({ id: doc.id, ...doc.data() });
-      });
+      const { data, error } = await supabase
+        .from('users')
+        .select('*');
 
-      setAllUsers(fetchedUsers);
+      if (error) {
+        console.error('Error fetching leaderboard:', error);
+        return;
+      }
+
+      setAllUsers(data || []);
     } catch (error) {
       console.error('Error fetching leaderboard: ', error);
     } finally {
@@ -32,22 +33,34 @@ const Leaderboard = () => {
 
   useEffect(() => {
     fetchLeaderboard();
-    const intervalId = setInterval(fetchLeaderboard, 10000);
-    return () => clearInterval(intervalId);
+
+    // 1. Periodic poll backup
+    const intervalId = setInterval(fetchLeaderboard, 8000);
+
+    // 2. Realtime subscription for live user score/submission updates
+    const channel = supabase
+      .channel('leaderboard:users')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'users' },
+        (payload) => {
+          fetchLeaderboard();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(intervalId);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  // Trigger reveal after data loads
+  // Trigger reveal animation after data loads
   useEffect(() => {
     if (!loading && allUsers.length > 0) {
       setTimeout(() => setRevealed(true), 100);
     }
   }, [loading, allUsers]);
-
-  const handleCategoryChange = (cat) => {
-    setRevealed(false);
-    setCategoryFilter(cat);
-    setTimeout(() => setRevealed(true), 60);
-  };
 
   const displayedUsers = getSortedParticipantsByCategory(allUsers, 'UG');
   const ugCount = displayedUsers.length;
@@ -80,13 +93,13 @@ const Leaderboard = () => {
             border-radius: 8px;
           }
           .table-scroll-container::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, #ff003c, #b7002b);
+            background: linear-gradient(180deg, #de0606, #ac0202);
             border-radius: 8px;
-            border: 2px solid rgba(10, 10, 14, 0.85);
+            border: 2px solid #3f3f3f;
           }
           .table-scroll-container::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(180deg, #ffffff, #ff003c);
-            box-shadow: 0 0 12px #ff003c;
+            background: linear-gradient(180deg, #e2e2e2, #de0606);
+            box-shadow: 0 0 12px #de0606;
           }
 
           @keyframes slideInFromBottom {
@@ -111,13 +124,13 @@ const Leaderboard = () => {
           }
         `}</style>
 
-        <div className="glass-panel table-scroll-container" style={{ overflowY: 'auto', overflowX: 'auto', maxHeight: 'calc(100vh - 220px)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+        <div className="glass-panel table-scroll-container" style={{ overflowY: 'auto', overflowX: 'auto', maxHeight: 'calc(100vh - 220px)', borderRadius: '16px', border: '1px solid #3f3f3f' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-panel-hover)', boxShadow: '0 2px 10px rgba(0, 0, 0, 0.5)' }}>
-              <tr style={{ color: '#ff003c', fontSize: '0.85rem', letterSpacing: '1px' }}>
+              <tr style={{ color: '#de0606', fontSize: '0.85rem', letterSpacing: '1px' }}>
                 <th style={{ padding: '1rem' }}>RANK</th>
                 <th style={{ padding: '1rem' }}>NAME</th>
-                <th style={{ padding: '1rem' }}>ROLL NO / CATEGORY</th>
+                <th style={{ padding: '1rem' }}>ROLL NUMBER</th>
                 <th style={{ padding: '1rem' }}>SCORE</th>
                 <th style={{ padding: '1rem' }}>EXECS</th>
                 <th style={{ padding: '1rem' }}>TIME TAKEN</th>
@@ -131,13 +144,17 @@ const Leaderboard = () => {
               ) : displayedUsers.length === 0 ? (
                 <tr><td colSpan="8" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No participants registered yet.</td></tr>
               ) : (
-                // Render top-to-bottom (Rank #1 at the top down to #last at the bottom)
                 displayedUsers.map((user, index) => {
-                  const hasWarnings = (user.tabSwitches || 0) > 0 || (user.copyPasteCount || 0) > 0;
+                  const tabSwitches = user.tab_switches ?? user.tabSwitches ?? 0;
+                  const copyPasteCount = user.copy_paste_count ?? user.copyPasteCount ?? 0;
+                  const hasWarnings = tabSwitches > 0 || copyPasteCount > 0;
                   const isTop3 = index < 3;
                   const rank = index + 1;
+                  const userRoll = user.roll_no ?? user.rollNo ?? 'N/A';
+                  const userExecs = user.total_submissions_count ?? user.totalSubmissionsCount ?? 0;
+                  const userElapsed = user.elapsed_time_ms ?? user.elapsedTimeMs ?? 0;
+                  const userFinished = user.is_finished ?? user.isFinished ?? false;
 
-                  // Cascade delay for top-to-bottom reveal
                   const delay = Math.min(index * 50, 1000);
 
                   let rowBg = 'transparent';
@@ -147,7 +164,7 @@ const Leaderboard = () => {
 
                   return (
                     <tr
-                      key={user.id}
+                      key={user.id || userRoll}
                       className={`lb-row${revealed ? ' visible' : ''}`}
                       style={{
                         borderBottom: '1px solid var(--border-subtle)',
@@ -178,27 +195,27 @@ const Leaderboard = () => {
 
                       {/* ROLL NO & CATEGORY BADGE */}
                       <td style={{ padding: '1rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontFamily: 'var(--font-mono)' }}>{user.rollNo || 'N/A'}</span>
-                        <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 'bold', background: 'rgba(255, 0, 60, 0.15)', color: '#ffffff', border: '1px solid #ff003c' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)' }}>{userRoll}</span>
+                        <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 'bold', background: 'rgba(222, 6, 6, 0.15)', color: '#ffffff', border: '1px solid #de0606' }}>
                           UG
                         </span>
                       </td>
 
                       {/* SCORE */}
-                      <td style={{ padding: '1rem', fontWeight: 'bold', color: (user.score || 0) < 0 ? '#ff4d6d' : '#ffffff' }}>
+                      <td style={{ padding: '1rem', fontWeight: 'bold', color: (user.score || 0) < 0 ? '#de0606' : '#ffffff' }}>
                         {user.score !== undefined ? user.score : 0}
                       </td>
 
                       {/* EXECS */}
-                      <td style={{ padding: '1rem', color: '#ff003c', fontWeight: 'bold' }}>
-                        {user.totalSubmissionsCount || 0}
+                      <td style={{ padding: '1rem', color: '#de0606', fontWeight: 'bold' }}>
+                        {userExecs}
                       </td>
 
                       {/* TIME TAKEN */}
                       <td style={{ padding: '1rem' }}>
-                        {user.elapsedTimeMs ? (
+                        {userElapsed ? (
                           <span style={{ color: 'var(--text-secondary)' }}>
-                            {Math.floor(user.elapsedTimeMs / 60000)}m {Math.floor((user.elapsedTimeMs % 60000) / 1000)}s
+                            {Math.floor(userElapsed / 60000)}m {Math.floor((userElapsed % 60000) / 1000)}s
                           </span>
                         ) : (
                           <span style={{ color: 'var(--text-secondary)' }}>N/A</span>
@@ -207,12 +224,12 @@ const Leaderboard = () => {
 
                       {/* WARNINGS */}
                       <td style={{ padding: '1rem', fontSize: '0.85rem', color: hasWarnings ? '#ff4d6d' : 'var(--text-secondary)' }}>
-                        Tabs: {user.tabSwitches || 0} (-{(user.tabSwitches || 0) * 2} pts) / Copy: {user.copyPasteCount || 0}
+                        Tabs: {tabSwitches} (-{tabSwitches * 2} pts) / Copy: {copyPasteCount}
                       </td>
 
                       {/* STATUS */}
                       <td style={{ padding: '1rem' }}>
-                        {user.isFinished ? (
+                        {userFinished ? (
                           <span style={{ color: '#00f59b', fontSize: '0.8rem', fontWeight: 'bold' }}>✓ FINISHED</span>
                         ) : (
                           <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>ACTIVE</span>
