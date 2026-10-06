@@ -1488,7 +1488,7 @@ const AdminDashboard = () => {
                 </h2>
                 <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                   Total: <strong style={{ color: 'var(--accent-cyan)' }}>{questionsList.length}</strong> | 
-                  Easy: <strong style={{ color: '#10B981' }}>{questionsList.filter(q => (q.category || 'Easy') === 'Easy').length}</strong> | 
+                  Easy: <strong style={{ color: '#007fd7' }}>{questionsList.filter(q => (q.category || 'Easy') === 'Easy').length}</strong> | 
                   Medium: <strong style={{ color: '#F59E0B' }}>{questionsList.filter(q => q.category === 'Medium').length}</strong> | 
                   Hard: <strong style={{ color: '#de0606' }}>{questionsList.filter(q => q.category === 'Hard').length}</strong> | 
                   Random Assignment: <strong style={{ color: '#007fd7' }}>{questionsPerStudent} per student</strong>
@@ -1624,7 +1624,7 @@ const AdminDashboard = () => {
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Category:</span>
                       {[
                         { label: 'ALL', count: questionsList.length, color: '#007fd7' },
-                        { label: 'Easy', count: questionsList.filter(q => (q.category || 'Easy') === 'Easy').length, color: '#10B981' },
+                        { label: 'Easy', count: questionsList.filter(q => (q.category || 'Easy') === 'Easy').length, color: '#007fd7' },
                         { label: 'Medium', count: questionsList.filter(q => q.category === 'Medium').length, color: '#F59E0B' },
                         { label: 'Hard', count: questionsList.filter(q => q.category === 'Hard').length, color: '#de0606' }
                       ].map(cat => (
@@ -1685,8 +1685,8 @@ const AdminDashboard = () => {
                   <div style={{ display: 'grid', gap: '1rem' }}>
                     {filteredQuestionsList.map(q => {
                       const cat = q.category || 'Easy';
-                      const badgeColor = cat === 'Hard' ? '#de0606' : cat === 'Medium' ? '#F59E0B' : '#10B981';
-                      const badgeBg = cat === 'Hard' ? 'rgba(222, 6, 6, 0.15)' : cat === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)';
+                      const badgeColor = cat === 'Hard' ? '#de0606' : cat === 'Medium' ? '#F59E0B' : '#007fd7';
+                      const badgeBg = cat === 'Hard' ? 'rgba(222, 6, 6, 0.15)' : cat === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(0, 127, 215, 0.15)';
                       return (
                         <div key={q.id} style={{ padding: '1rem', border: '1px solid var(--border-subtle)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
@@ -1769,8 +1769,8 @@ const AdminDashboard = () => {
                   <tbody>
                     {liveUsers.map(u => {
                       const userCat = u.category || 'Easy';
-                      const badgeColor = userCat === 'Hard' ? '#de0606' : userCat === 'Medium' ? '#F59E0B' : '#10B981';
-                      const badgeBg = userCat === 'Hard' ? 'rgba(222, 6, 6, 0.15)' : userCat === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)';
+                      const badgeColor = userCat === 'Hard' ? '#de0606' : userCat === 'Medium' ? '#F59E0B' : '#007fd7';
+                      const badgeBg = userCat === 'Hard' ? 'rgba(222, 6, 6, 0.15)' : userCat === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(0, 127, 215, 0.15)';
                       return (
                       <tr key={u.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                         <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1913,7 +1913,7 @@ const AdminDashboard = () => {
               <div style={{ height: '30px', width: '1px', background: 'var(--border-subtle)' }}></div>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Active & Ready</span>
-                <span style={{ color: '#00f59b', fontWeight: 'bold', fontSize: '1.4rem' }}>
+                <span style={{ color: '#007fd7', fontWeight: 'bold', fontSize: '1.4rem' }}>
                   {compilerStatusList.active.length} Keys
                 </span>
               </div>
@@ -1957,17 +1957,17 @@ const AdminDashboard = () => {
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '0.8rem', maxHeight: '380px', overflowY: 'auto' }}>
                   {compilerStatusList.all.map((item, idx) => (
-                    <div key={idx} style={{ background: '#0a0e1a', padding: '0.8rem 1rem', borderRadius: '6px', border: item.status === 'exhausted' ? '1px solid rgba(255, 0, 85, 0.3)' : '1px solid rgba(0, 245, 155, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div key={idx} style={{ background: '#0a0e1a', padding: '0.8rem 1rem', borderRadius: '6px', border: item.status === 'exhausted' ? '1px solid rgba(255, 0, 85, 0.3)' : '1px solid rgba(0, 127, 215, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
                           <strong>#{idx + 1}</strong> KEY: {item.apiKey ? `${item.apiKey.slice(0, 10)}...${item.apiKey.slice(-6)}` : 'N/A'}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: item.status === 'exhausted' ? 'var(--accent-magenta)' : '#00f59b', marginTop: '4px' }}>
+                        <div style={{ fontSize: '0.75rem', color: item.status === 'exhausted' ? 'var(--accent-magenta)' : '#007fd7', marginTop: '4px' }}>
                           {item.status === 'exhausted' ? (item.errorReason || 'LIMIT FINISHED / EXHAUSTED') : `ACTIVE & READY | Successful Runs: ${item.used || 0}`}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: item.status === 'exhausted' ? 'rgba(255, 0, 85, 0.15)' : 'rgba(0, 245, 155, 0.15)', color: item.status === 'exhausted' ? 'var(--accent-magenta)' : '#00f59b' }}>
+                        <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: item.status === 'exhausted' ? 'rgba(255, 0, 85, 0.15)' : 'rgba(0, 127, 215, 0.15)', color: item.status === 'exhausted' ? 'var(--accent-magenta)' : '#007fd7' }}>
                           {item.status === 'exhausted' ? 'EXHAUSTED' : 'ACTIVE'}
                         </span>
                         {onlineCompilerKeys.includes(item.apiKey) && (
@@ -1982,13 +1982,13 @@ const AdminDashboard = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
               {/* Active & Ready APIs */}
-              <div style={{ background: 'rgba(0, 245, 155, 0.04)', border: '1px solid rgba(0, 245, 155, 0.3)', borderRadius: '8px', padding: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0, 245, 155, 0.2)', paddingBottom: '0.8rem', marginBottom: '1rem' }}>
-                  <h4 style={{ color: '#00f59b', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: '#00f59b' }}></span>
+              <div style={{ background: 'rgba(0, 127, 215, 0.04)', border: '1px solid rgba(0, 127, 215, 0.3)', borderRadius: '8px', padding: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0, 127, 215, 0.2)', paddingBottom: '0.8rem', marginBottom: '1rem' }}>
+                  <h4 style={{ color: '#007fd7', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: '#007fd7' }}></span>
                     ACTIVE ONLINECOMPILER KEYS (READY)
                   </h4>
-                  <span style={{ fontWeight: 'bold', background: 'rgba(0, 245, 155, 0.15)', color: '#00f59b', padding: '2px 10px', borderRadius: '12px', fontSize: '0.85rem' }}>
+                  <span style={{ fontWeight: 'bold', background: 'rgba(0, 127, 215, 0.15)', color: '#007fd7', padding: '2px 10px', borderRadius: '12px', fontSize: '0.85rem' }}>
                     {compilerStatusList.active.length} Keys Active
                   </span>
                 </div>
@@ -2000,10 +2000,10 @@ const AdminDashboard = () => {
                       <div key={idx} style={{ background: 'var(--bg-deep-navy)', padding: '0.8rem 1rem', borderRadius: '6px', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-primary)' }}>KEY: {item.apiKey.slice(0, 12)}...{item.apiKey.slice(-6)}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#00f59b', marginTop: '4px' }}>Status: <strong>Active & Verified</strong> (Runs: {item.used || 0})</div>
+                          <div style={{ fontSize: '0.75rem', color: '#007fd7', marginTop: '4px' }}>Status: <strong>Active & Verified</strong> (Runs: {item.used || 0})</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '4px', background: 'rgba(0, 245, 155, 0.1)', color: '#00f59b', border: '1px solid rgba(0, 245, 155, 0.3)' }}>ACTIVE</span>
+                          <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '4px', background: 'rgba(0, 127, 215, 0.1)', color: '#007fd7', border: '1px solid rgba(0, 127, 215, 0.3)' }}>ACTIVE</span>
                           {onlineCompilerKeys.includes(item.apiKey) && (
                             <button onClick={() => handleDeleteCompilerKey(item.apiKey)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-magenta)', cursor: 'pointer' }} title="Remove custom key"><Trash2 size={16} /></button>
                           )}
@@ -2154,9 +2154,9 @@ const AdminDashboard = () => {
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Standard across all questions</div>
                 </div>
 
-                <div style={{ background: 'var(--bg-deep-navy)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(0, 245, 155, 0.3)' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#00f59b', textTransform: 'uppercase', letterSpacing: '1px' }}>SPLIT FORMULA RULE</div>
-                  <div style={{ fontSize: '1.4rem', color: '#00f59b', fontWeight: 'bold', marginTop: '4px' }}>100 ÷ N Errors</div>
+                <div style={{ background: 'var(--bg-deep-navy)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(0, 127, 215, 0.3)' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#007fd7', textTransform: 'uppercase', letterSpacing: '1px' }}>SPLIT FORMULA RULE</div>
+                  <div style={{ fontSize: '1.4rem', color: '#007fd7', fontWeight: 'bold', marginTop: '4px' }}>100 ÷ N Errors</div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>1 Err = 100 | 2 Err = 50 | 3 Err = 33.33</div>
                 </div>
 
@@ -2195,7 +2195,7 @@ const AdminDashboard = () => {
                       ? questionsList.length
                       : questionsList.filter(q => (q.category || (parseQuestionErrors(q).totalErrors === 1 ? 'Easy' : parseQuestionErrors(q).totalErrors === 2 ? 'Medium' : 'Hard')) === cat).length;
                     const isActive = pointCategoryFilter === cat;
-                    const catColor = cat === 'Easy' ? '#00f59b' : cat === 'Medium' ? '#f59e0b' : cat === 'Hard' ? '#de0606' : 'var(--accent-cyan)';
+                    const catColor = cat === 'Easy' ? '#007fd7' : cat === 'Medium' ? '#f59e0b' : cat === 'Hard' ? '#de0606' : 'var(--accent-cyan)';
                     return (
                       <button
                         key={cat}
@@ -2204,7 +2204,7 @@ const AdminDashboard = () => {
                           padding: '6px 14px',
                           borderRadius: '6px',
                           border: isActive ? `1px solid ${catColor}` : '1px solid transparent',
-                          background: isActive ? (cat === 'ALL' ? 'var(--accent-cyan)' : cat === 'Easy' ? 'rgba(0, 245, 155, 0.2)' : cat === 'Medium' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(222, 6, 6, 0.2)') : 'transparent',
+                          background: isActive ? (cat === 'ALL' ? 'var(--accent-cyan)' : cat === 'Easy' ? 'rgba(0, 127, 215, 0.2)' : cat === 'Medium' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(222, 6, 6, 0.2)') : 'transparent',
                           color: isActive ? (cat === 'ALL' ? '#000000' : catColor) : 'var(--text-secondary)',
                           fontWeight: 'bold',
                           fontSize: '0.82rem',
@@ -2278,9 +2278,9 @@ const AdminDashboard = () => {
                                   textTransform: 'uppercase',
                                   display: 'inline-block',
                                   marginTop: '3px',
-                                  background: u.category === 'Easy' ? 'rgba(0, 245, 155, 0.15)' : u.category === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(222, 6, 6, 0.15)',
-                                  color: u.category === 'Easy' ? '#00f59b' : u.category === 'Medium' ? '#f59e0b' : '#de0606',
-                                  border: `1px solid ${u.category === 'Easy' ? 'rgba(0, 245, 155, 0.3)' : u.category === 'Medium' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(222, 6, 6, 0.3)'}`
+                                  background: u.category === 'Easy' ? 'rgba(0, 127, 215, 0.15)' : u.category === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(222, 6, 6, 0.15)',
+                                  color: u.category === 'Easy' ? '#007fd7' : u.category === 'Medium' ? '#f59e0b' : '#de0606',
+                                  border: `1px solid ${u.category === 'Easy' ? 'rgba(0, 127, 215, 0.3)' : u.category === 'Medium' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(222, 6, 6, 0.3)'}`
                                 }}>
                                   {u.category}
                                 </span>
@@ -2291,7 +2291,7 @@ const AdminDashboard = () => {
                               )}
                             </td>
                             <td style={{ padding: '12px 10px' }}>
-                              <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#00f59b', fontFamily: 'var(--font-mono)' }}>
+                              <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#007fd7', fontFamily: 'var(--font-mono)' }}>
                                 {u.score || 0} PTS
                               </div>
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
@@ -2315,10 +2315,10 @@ const AdminDashboard = () => {
                                     const isFull = s.score >= 100 || clearedErr === totalErr;
 
                                     return (
-                                      <div key={sIdx} style={{ background: 'var(--bg-deep-navy)', padding: '6px 10px', borderRadius: '6px', border: isFull ? '1px solid rgba(0, 245, 155, 0.3)' : '1px solid rgba(255, 204, 0, 0.3)', fontSize: '0.78rem' }}>
+                                      <div key={sIdx} style={{ background: 'var(--bg-deep-navy)', padding: '6px 10px', borderRadius: '6px', border: isFull ? '1px solid rgba(0, 127, 215, 0.3)' : '1px solid rgba(255, 204, 0, 0.3)', fontSize: '0.78rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                           <strong style={{ color: 'var(--text-primary)' }}>{s.title || `Mission ${sIdx + 1}`}</strong>
-                                          <span style={{ fontWeight: 'bold', color: isFull ? '#00f59b' : '#ffcc00' }}>
+                                          <span style={{ fontWeight: 'bold', color: isFull ? '#007fd7' : '#ffcc00' }}>
                                             +{s.score} PTS
                                           </span>
                                         </div>
@@ -2339,14 +2339,14 @@ const AdminDashboard = () => {
                                     CURRENTLY EDITING
                                   </div>
                                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
-                                    Errors Fixed: <strong style={{ color: '#00f59b' }}>{u.clearedErrors || 0} / {u.totalErrors || 1}</strong>
+                                    Errors Fixed: <strong style={{ color: '#007fd7' }}>{u.clearedErrors || 0} / {u.totalErrors || 1}</strong>
                                   </div>
                                   <div style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', marginTop: '2px' }}>
                                     Est. Score: +{Math.min(100, Math.round((u.clearedErrors || 0) * (100 / Math.max(1, u.totalErrors || 1))))} pts
                                   </div>
                                 </div>
                               ) : u.isFinished ? (
-                                <span style={{ color: '#00f59b', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ color: '#007fd7', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                   <CheckCircle size={14} /> FINISHED
                                 </span>
                               ) : (
@@ -2405,9 +2405,9 @@ const AdminDashboard = () => {
                         const isEasy = cat === 'Easy';
                         const isMed = cat === 'Medium';
                         const isHard = cat === 'Hard';
-                        const color = isEasy ? '#00f59b' : isMed ? '#f59e0b' : '#de0606';
-                        const bg = isEasy ? 'rgba(0, 245, 155, 0.15)' : isMed ? 'rgba(245, 158, 11, 0.15)' : 'rgba(222, 6, 6, 0.15)';
-                        const border = isEasy ? 'rgba(0, 245, 155, 0.35)' : isMed ? 'rgba(245, 158, 11, 0.35)' : 'rgba(222, 6, 6, 0.35)';
+                        const color = isEasy ? '#007fd7' : isMed ? '#f59e0b' : '#de0606';
+                        const bg = isEasy ? 'rgba(0, 127, 215, 0.15)' : isMed ? 'rgba(245, 158, 11, 0.15)' : 'rgba(222, 6, 6, 0.15)';
+                        const border = isEasy ? 'rgba(0, 127, 215, 0.35)' : isMed ? 'rgba(245, 158, 11, 0.35)' : 'rgba(222, 6, 6, 0.35)';
 
                         return (
                           <tr key={q.id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: idx % 2 === 0 ? 'rgba(0,0,0,0.1)' : 'transparent' }}>
@@ -2442,8 +2442,8 @@ const AdminDashboard = () => {
                               <span style={{ 
                                 padding: '4px 10px', 
                                 borderRadius: '12px', 
-                                background: meta.totalErrors === 1 ? 'rgba(0, 245, 155, 0.15)' : meta.totalErrors === 2 ? 'rgba(0, 127, 215, 0.15)' : 'rgba(222, 6, 6, 0.15)',
-                                color: meta.totalErrors === 1 ? '#00f59b' : meta.totalErrors === 2 ? 'var(--accent-cyan)' : '#ff4d6d',
+                                background: meta.totalErrors === 1 ? 'rgba(0, 127, 215, 0.15)' : meta.totalErrors === 2 ? 'rgba(0, 127, 215, 0.15)' : 'rgba(222, 6, 6, 0.15)',
+                                color: meta.totalErrors === 1 ? '#007fd7' : meta.totalErrors === 2 ? 'var(--accent-cyan)' : '#ff4d6d',
                                 fontWeight: 'bold',
                                 fontSize: '0.82rem'
                               }}>
@@ -2451,7 +2451,7 @@ const AdminDashboard = () => {
                               </span>
                             </td>
                             <td style={{ padding: '12px 10px' }}>
-                              <div style={{ color: '#00f59b', fontWeight: 'bold', fontFamily: 'var(--font-mono)' }}>
+                              <div style={{ color: '#007fd7', fontWeight: 'bold', fontFamily: 'var(--font-mono)' }}>
                                 {meta.pointsPerError} PTS / Error
                               </div>
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
@@ -2483,7 +2483,7 @@ const AdminDashboard = () => {
                         🔍 ERROR SPLIT & CODE INSPECTION: {selectedPointInspectStudent.name}
                       </h3>
                       <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                        Reg No: <strong>{selectedPointInspectStudent.regNo}</strong> | Department: <strong>{selectedPointInspectStudent.department}</strong> | Score: <strong style={{ color: '#00f59b' }}>{selectedPointInspectStudent.score || 0} PTS</strong>
+                        Reg No: <strong>{selectedPointInspectStudent.regNo}</strong> | Department: <strong>{selectedPointInspectStudent.department}</strong> | Score: <strong style={{ color: '#007fd7' }}>{selectedPointInspectStudent.score || 0} PTS</strong>
                       </p>
                     </div>
                     <button onClick={() => setSelectedPointInspectStudent(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
@@ -2512,7 +2512,7 @@ const AdminDashboard = () => {
                                 </div>
                               </div>
                               <div style={{ textAlign: 'right' }}>
-                                <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#00f59b', background: 'rgba(0, 245, 155, 0.12)', padding: '4px 12px', borderRadius: '6px' }}>
+                                <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#007fd7', background: 'rgba(0, 127, 215, 0.12)', padding: '4px 12px', borderRadius: '6px' }}>
                                   {sub.score} / 100 PTS
                                 </span>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -2618,7 +2618,7 @@ const AdminDashboard = () => {
                             <strong style={{ color: isSel ? 'var(--accent-cyan)' : 'var(--text-primary)' }}>
                               {user.rollNo} - {user.name}
                             </strong>
-                            <span style={{ fontWeight: 'bold', color: user.score < 0 ? 'var(--accent-magenta)' : '#00f59b' }}>
+                            <span style={{ fontWeight: 'bold', color: user.score < 0 ? 'var(--accent-magenta)' : '#007fd7' }}>
                               {user.score} pts
                             </span>
                           </div>
@@ -2647,7 +2647,7 @@ const AdminDashboard = () => {
                           {selectedUser.name} <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>(Roll: {selectedUser.rollNo})</span>
                         </h3>
                         <div style={{ marginTop: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                          Total Score: <strong style={{ color: '#00f59b' }}>{selectedUser.score} pts</strong> | Total Active Time: <strong>{selectedUser.elapsedTimeMs ? `${Math.floor(selectedUser.elapsedTimeMs / 60000)}m ${Math.floor((selectedUser.elapsedTimeMs % 60000) / 1000)}s` : 'N/A'}</strong> | Tab Switches: <strong style={{ color: selectedUser.tabSwitches > 0 ? 'var(--accent-pink)' : 'inherit' }}>{selectedUser.tabSwitches || 0} (-{(selectedUser.tabSwitches || 0) * 2} pts)</strong>
+                          Total Score: <strong style={{ color: '#007fd7' }}>{selectedUser.score} pts</strong> | Total Active Time: <strong>{selectedUser.elapsedTimeMs ? `${Math.floor(selectedUser.elapsedTimeMs / 60000)}m ${Math.floor((selectedUser.elapsedTimeMs % 60000) / 1000)}s` : 'N/A'}</strong> | Tab Switches: <strong style={{ color: selectedUser.tabSwitches > 0 ? 'var(--accent-pink)' : 'inherit' }}>{selectedUser.tabSwitches || 0} (-{(selectedUser.tabSwitches || 0) * 2} pts)</strong>
                         </div>
                       </div>
                     </div>
@@ -2671,7 +2671,7 @@ const AdminDashboard = () => {
                               }}
                             >
                               MISSION {idx + 1}: {subData.title ? (subData.title.length > 20 ? subData.title.slice(0, 20) + '...' : subData.title) : 'C++'}
-                              <span style={{ marginLeft: '6px', color: '#00f59b' }}>✓</span>
+                              <span style={{ marginLeft: '6px', color: '#007fd7' }}>✓</span>
                             </button>
                           );
                         })
@@ -2703,7 +2703,7 @@ const AdminDashboard = () => {
                           </div>
                           <div>
                             <span style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: '2px' }}>Score Awarded</span>
-                            <strong style={{ color: '#00f59b' }}>+{activeSubData.score || 0} pts</strong>
+                            <strong style={{ color: '#007fd7' }}>+{activeSubData.score || 0} pts</strong>
                           </div>
                         </div>
 
@@ -3185,7 +3185,7 @@ const AdminDashboard = () => {
                 </button>
 
                 {loadedFileName && (
-                  <span style={{ fontSize: '0.82rem', padding: '4px 12px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', border: '1px solid #10B981', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '0.82rem', padding: '4px 12px', borderRadius: '12px', background: 'rgba(0, 127, 215, 0.15)', color: '#007fd7', border: '1px solid #007fd7', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                     <CheckCircle size={14} /> {loadedFileName}
                   </span>
                 )}

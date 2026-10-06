@@ -230,7 +230,7 @@ const Leaderboard = () => {
                       {/* STATUS */}
                       <td style={{ padding: '1rem' }}>
                         {userFinished ? (
-                          <span style={{ color: '#00f59b', fontSize: '0.8rem', fontWeight: 'bold' }}>✓ FINISHED</span>
+                          <span style={{ color: '#007fd7', fontSize: '0.8rem', fontWeight: 'bold' }}>✓ FINISHED</span>
                         ) : (
                           <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>ACTIVE</span>
                         )}

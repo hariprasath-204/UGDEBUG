@@ -13,8 +13,8 @@ const PopupMessage = ({ message, type = 'info', onClose, onConfirm }) => {
     glowColor = 'rgba(222, 6, 6, 0.6)';
     Icon = AlertCircle;
   } else if (type === 'success') {
-    borderColor = '#00f59b';
-    glowColor = 'rgba(0, 245, 155, 0.45)';
+    borderColor = '#007fd7';
+    glowColor = 'rgba(0, 127, 215, 0.45)';
     Icon = CheckCircle2;
   } else if (type === 'warning') {
     borderColor = '#de0606';
@@ -24,7 +24,7 @@ const PopupMessage = ({ message, type = 'info', onClose, onConfirm }) => {
 
   const isPositive = type === 'success' || type === 'info';
   const iconBg = isPositive 
-    ? (type === 'success' ? 'rgba(0, 245, 155, 0.12)' : 'rgba(0, 127, 215, 0.12)')
+    ? (type === 'success' ? 'rgba(0, 127, 215, 0.12)' : 'rgba(0, 127, 215, 0.12)')
     : 'rgba(222, 6, 6, 0.12)';
 
   return (

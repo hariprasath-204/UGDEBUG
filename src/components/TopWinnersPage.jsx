@@ -251,7 +251,7 @@ const TopWinnersPage = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><ShieldAlert size={14} /> Tab Violations:</span>
-                    <strong style={{ color: tabSwitches > 0 ? '#ff4d6d' : '#00f59b' }}>{tabSwitches}</strong>
+                    <strong style={{ color: tabSwitches > 0 ? '#ff4d6d' : '#007fd7' }}>{tabSwitches}</strong>
                   </div>
                 </div>
               </div>

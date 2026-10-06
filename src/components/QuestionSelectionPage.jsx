@@ -397,8 +397,8 @@ const QuestionSelectionPage = () => {
   const totalCount = questions.length || requiredCount;
   const progressPercent = Math.round((completedCount / totalCount) * 100);
 
-  const categoryColor = userCategory === 'Hard' ? '#de0606' : userCategory === 'Medium' ? '#F59E0B' : '#10B981';
-  const categoryBg = userCategory === 'Hard' ? 'rgba(222, 6, 6, 0.15)' : userCategory === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)';
+  const categoryColor = userCategory === 'Hard' ? '#de0606' : userCategory === 'Medium' ? '#F59E0B' : '#007fd7';
+  const categoryBg = userCategory === 'Hard' ? 'rgba(222, 6, 6, 0.15)' : userCategory === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(0, 127, 215, 0.15)';
 
   return (
     <>
@@ -431,7 +431,7 @@ const QuestionSelectionPage = () => {
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: completedCount === totalCount ? '#00f59b' : '#ffffff' }}>
+              <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: completedCount === totalCount ? '#007fd7' : '#ffffff' }}>
                 {progressPercent}%
               </span>
             </div>
@@ -458,8 +458,8 @@ const QuestionSelectionPage = () => {
                       justifyContent: 'space-between', 
                       alignItems: 'center', 
                       padding: '1.6rem 2rem', 
-                      border: q.isCompleted ? '1px solid rgba(0, 245, 155, 0.3)' : '1px solid #3f3f3f', 
-                      background: q.isCompleted ? 'rgba(0, 245, 155, 0.04)' : 'var(--bg-deep-navy)', 
+                      border: q.isCompleted ? '1px solid rgba(0, 127, 215, 0.3)' : '1px solid #3f3f3f', 
+                      background: q.isCompleted ? 'rgba(0, 127, 215, 0.04)' : 'var(--bg-deep-navy)', 
                       borderRadius: 'var(--radius-sm)', 
                       opacity: q.isCompleted ? 0.75 : 1, 
                       transition: 'all 0.3s ease',
@@ -475,7 +475,7 @@ const QuestionSelectionPage = () => {
                           C++
                         </span>
                         {q.isCompleted && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#10B981', fontWeight: 'bold' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#007fd7', fontWeight: 'bold' }}>
                             <CheckCircle2 size={14} /> SOLVED
                           </span>
                         )}
@@ -509,7 +509,7 @@ const QuestionSelectionPage = () => {
                         disabled={q.isCompleted}
                       >
                         {q.isCompleted ? (
-                          <span style={{ color: '#10B981', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}>
+                          <span style={{ color: '#007fd7', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}>
                             <CheckCircle2 size={16} /> COMPLETED
                           </span>
                         ) : (
