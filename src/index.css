@@ -419,6 +419,11 @@ tr:last-child td {
   box-shadow: 0 0 10px rgba(222, 6, 6, 0.3);
 }
 
+@page {
+  size: A4 portrait;
+  margin: 8mm;
+}
+
 @media print {
   body, html, #root {
     background: white !important;

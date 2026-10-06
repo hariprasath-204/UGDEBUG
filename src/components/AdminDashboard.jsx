@@ -6,7 +6,7 @@ import LoadingOverlay from './LoadingOverlay';
 import PopupMessage from './PopupMessage';
 import { syncClock, getNow } from '../utils/timeSync';
 import { sortParticipants, getStudentCategory, getSortedParticipantsByCategory, getParticipantSection } from '../utils/ranking';
-import { Trophy, Clock, FileText, Users, Activity, FileDown, Code, MonitorPlay, Sliders, Trash2, RefreshCw, Edit, Award, Sparkles, GraduationCap, PenTool, Upload, CheckCircle, Image, X, Calculator, Search, Check, AlertCircle, Percent, BarChart3, Layers } from 'lucide-react';
+import { Trophy, Clock, FileText, Users, Activity, FileDown, Code, MonitorPlay, Sliders, Trash2, RefreshCw, Edit, Award, Sparkles, GraduationCap, PenTool, Upload, CheckCircle, Image, X, Calculator, Search, Check, AlertCircle, Percent, BarChart3, Layers, Printer } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
 
@@ -3175,18 +3175,22 @@ const AdminDashboard = () => {
           const cleanEventName = (reportEventName || 'CODATHAN').replace(/[^a-zA-Z0-9]/g, '_');
           const cleanReportType = reportType === 'scoresheet' ? 'ScoreSheet' : 'Winners';
           const sectionTag = adminCategoryFilter === 'ALL' ? 'Full' : `Section_${adminCategoryFilter}`;
-          const filename = `${cleanEventName}_${cleanReportType}_${sectionTag}.pdf`;
+          const filename = `${cleanEventName}_${cleanReportType}_${sectionTag}_A4.pdf`;
           
           const opt = {
-            margin:       [12, 10, 12, 10],
+            margin:       [8, 8, 8, 8],
             filename:     filename,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, letterRendering: true, scrollY: 0 },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:    { mode: ['css'], before: '.html2pdf__page-break' }
+            html2canvas:  { scale: 2, useCORS: true, letterRendering: true, scrollY: 0, logging: false },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+            pagebreak:    { mode: ['css', 'legacy'], before: '.html2pdf__page-break', avoid: ['.avoid-break', 'tr'] }
           };
           
           html2pdf().set(opt).from(element).save();
+        };
+
+        const handleDirectPrint = () => {
+          window.print();
         };
 
         const renderSharedPrintableSection = () => {
@@ -3243,7 +3247,7 @@ const AdminDashboard = () => {
           );
 
           return (
-            <div id="print-area" style={{ background: 'white', color: 'black', padding: '1.2rem', fontFamily: '"Times New Roman", Times, serif', boxSizing: 'border-box' }}>
+            <div id="print-area" style={{ background: 'white', color: 'black', padding: '10mm 10mm', fontFamily: '"Times New Roman", Times, serif', boxSizing: 'border-box', width: '100%', maxWidth: '210mm', margin: '0 auto', boxShadow: '0 0 25px rgba(0,0,0,0.6)' }}>
               {tableChunks.map((chunk, cIdx) => (
                 <React.Fragment key={chunk.pageNum}>
                   {chunk.isFirstPage && (
@@ -3361,8 +3365,11 @@ const AdminDashboard = () => {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-                  <button onClick={handleDownloadPdf} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px' }}>
-                    <FileDown size={19} /> DOWNLOAD OFFICIAL PDF (.PDF)
+                  <button onClick={handleDownloadPdf} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontWeight: 'bold' }}>
+                    <FileDown size={19} /> 📥 DOWNLOAD A4 PDF (.PDF)
+                  </button>
+                  <button onClick={handleDirectPrint} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px' }}>
+                    <Printer size={19} /> 🖨️ PRINT / SAVE A4
                   </button>
                 </div>
               </div>
