@@ -1,6 +1,7 @@
 [
   {
     "title": "C++ Bug: Factorial of a Number",
+    "category": "Easy",
     "phase": "cpp",
     "description": "Debug the factorial program. (logic and syntax).",
     "points": 100,
@@ -15,6 +16,7 @@
   },
   {
     "title": "C++ Bug: Sum of Natural Numbers",
+    "category": "Easy",
     "phase": "cpp",
     "description": "Debug the sum of natural numbers program. (logic and syntax).",
     "points": 100,
@@ -29,6 +31,7 @@
   },
   {
     "title": "C++ Bug: Sum and Average",
+    "category": "Easy",
     "phase": "cpp",
     "description": "Debug the sum and average program. (logic and syntax).",
     "points": 100,
@@ -43,6 +46,7 @@
   },
   {
     "title": "C++ Bug: Odd or Even",
+    "category": "Easy",
     "phase": "cpp",
     "description": "Debug the odd or even checking program. (logic and syntax).",
     "points": 100,
@@ -57,6 +61,7 @@
   },
   {
     "title": "C++ Bug: Displaying a Student Mark",
+    "category": "Easy",
     "phase": "cpp",
     "description": "Debug the student mark class program. (logic and syntax).",
     "points": 100,
@@ -71,6 +76,7 @@
   },
   {
     "title": "C++ Bug: Rectangle Area using Class",
+    "category": "Easy",
     "phase": "cpp",
     "description": "Debug the rectangle area class program. (logic and syntax).",
     "points": 100,
@@ -85,6 +91,7 @@
   },
   {
     "title": "C++ Bug: Cube of a Number",
+    "category": "Easy",
     "phase": "cpp",
     "description": "Debug the cube of a number program. (logic and syntax).",
     "points": 100,
@@ -99,6 +106,7 @@
   },
   {
     "title": "C++ Bug: Positive, Negative or Zero",
+    "category": "Easy",
     "phase": "cpp",
     "description": "Debug the number checking program. (logic and syntax).",
     "points": 100,
@@ -113,6 +121,7 @@
   },
   {
     "title": "C++ Bug: Employee Salary",
+    "category": "Easy",
     "phase": "cpp",
     "description": "Debug the employee salary class program. (logic and syntax).",
     "points": 100,
@@ -127,6 +136,7 @@
   },
   {
     "title": "C++ Bug: Multiplication Table",
+    "category": "Easy",
     "phase": "cpp",
     "description": "Debug the multiplication table program. (logic and syntax).",
     "points": 100,
@@ -141,6 +151,7 @@
   },
   {
     "title": "C++ Bug: Factorial using Function",
+    "category": "Medium",
     "phase": "cpp",
     "description": "Debug the factorial function program. (logic and syntax).",
     "points": 200,
@@ -155,6 +166,7 @@
   },
   {
     "title": "C++ Bug: Prime Number",
+    "category": "Medium",
     "phase": "cpp",
     "description": "Debug the prime number checking program. (logic and syntax).",
     "points": 200,
@@ -169,6 +181,7 @@
   },
   {
     "title": "C++ Bug: Count Even Numbers",
+    "category": "Medium",
     "phase": "cpp",
     "description": "Debug the even and odd counting program. (logic and syntax).",
     "points": 200,
@@ -183,6 +196,7 @@
   },
   {
     "title": "C++ Bug: Student Grade",
+    "category": "Medium",
     "phase": "cpp",
     "description": "Debug the student grade program. (logic and syntax).",
     "points": 200,
@@ -197,6 +211,7 @@
   },
   {
     "title": "C++ Bug: Simple Interest",
+    "category": "Medium",
     "phase": "cpp",
     "description": "Debug the simple interest class program. (logic and syntax).",
     "points": 200,
@@ -211,6 +226,7 @@
   },
   {
     "title": "C++ Bug: Single Inheritance - Age Classification",
+    "category": "Medium",
     "phase": "cpp",
     "description": "Debug the single inheritance program. (logic and syntax).",
     "points": 200,
@@ -225,6 +241,7 @@
   },
   {
     "title": "C++ Bug: Print Even Numbers using For Loop",
+    "category": "Medium",
     "phase": "cpp",
     "description": "Debug the even number printing program. (logic and syntax).",
     "points": 200,
@@ -239,6 +256,7 @@
   },
   {
     "title": "C++ Bug: Employee Bonus Calculation",
+    "category": "Medium",
     "phase": "cpp",
     "description": "Debug the multiple inheritance payroll program. (logic and syntax).",
     "points": 200,
@@ -253,6 +271,7 @@
   },
   {
     "title": "C++ Bug: Student Mark and Grade",
+    "category": "Hard",
     "phase": "cpp",
     "description": "Debug the mark validation and grading program. (logic and syntax).",
     "points": 300,
@@ -267,6 +286,7 @@
   },
   {
     "title": "C++ Bug: Student Total and Average",
+    "category": "Hard",
     "phase": "cpp",
     "description": "Debug the total, average and grade program. (logic and syntax).",
     "points": 300,
@@ -281,6 +301,7 @@
   },
   {
     "title": "C++ Bug: Sum of Array Elements",
+    "category": "Hard",
     "phase": "cpp",
     "description": "Debug the array sum program that uses a function. (logic and syntax).",
     "points": 300,
@@ -295,6 +316,7 @@
   },
   {
     "title": "C++ Bug: Bonus Calculation",
+    "category": "Hard",
     "phase": "cpp",
     "description": "Debug the employee bonus, tax and net salary program. (logic and syntax).",
     "points": 300,
@@ -309,6 +331,7 @@
   },
   {
     "title": "C++ Bug: Shopping Bill",
+    "category": "Hard",
     "phase": "cpp",
     "description": "Debug the shopping bill class program. (logic and syntax).",
     "points": 300,
@@ -323,6 +346,7 @@
   },
   {
     "title": "C++ Bug: Reverse a String",
+    "category": "Hard",
     "phase": "cpp",
     "description": "Debug the string reverse and palindrome program. (logic and syntax).",
     "points": 300,
@@ -337,6 +361,7 @@
   },
   {
     "title": "C++ Bug: Simple Menu Program",
+    "category": "Hard",
     "phase": "cpp",
     "description": "Debug the switch-case calculator program. (logic and syntax).",
     "points": 300,
@@ -351,6 +376,7 @@
   },
   {
     "title": "C++ Bug: Rectangle Area using Constructor",
+    "category": "Hard",
     "phase": "cpp",
     "description": "Debug the rectangle constructor program. (logic and syntax).",
     "points": 300,
