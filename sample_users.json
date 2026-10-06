@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Aravind Kumar R",
+    "rollNo": "26PCA101",
+    "category": "Easy"
+  },
+  {
+    "name": "Balamurugan M",
+    "rollNo": "26PCA102",
+    "category": "Medium"
+  },
+  {
+    "name": "Dinesh K",
+    "rollNo": "26PCA103",
+    "category": "Hard"
+  },
+  {
+    "name": "Gopinath S",
+    "rollNo": "26PCA104",
+    "category": "Easy"
+  },
+  {
+    "name": "Hariharan V",
+    "rollNo": "26PCA201",
+    "category": "Easy"
+  },
+  {
+    "name": "Karthick Raja P",
+    "rollNo": "26PCA202",
+    "category": "Medium"
+  },
+  {
+    "name": "Manojkumar S",
+    "rollNo": "26PCA203",
+    "category": "Hard"
+  },
+  {
+    "name": "Naveen Prasath T",
+    "rollNo": "26PCA204",
+    "category": "Easy"
+  }
+]

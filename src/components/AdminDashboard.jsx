@@ -297,6 +297,169 @@ const AdminDashboard = () => {
   const [userForm, setUserForm] = useState({ name: '', rollNo: '', category: 'Easy' });
   const [userStatus, setUserStatus] = useState('');
   const [editingUserId, setEditingUserId] = useState(null);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userCategoryFilter, setUserCategoryFilter] = useState('ALL');
+  const [userSectionFilter, setUserSectionFilter] = useState('ALL');
+
+  // Bulk User Import State
+  const [isBulkUserModalOpen, setIsBulkUserModalOpen] = useState(false);
+  const [bulkUserJsonInput, setBulkUserJsonInput] = useState('');
+  const [bulkUserImportProgress, setBulkUserImportProgress] = useState('');
+  const [loadedUserFileName, setLoadedUserFileName] = useState('');
+
+  const handleDownloadSampleUserTemplate = () => {
+    const sampleUsers = [
+      {
+        "name": "Aravind Kumar R",
+        "rollNo": "26PCA101",
+        "category": "Easy"
+      },
+      {
+        "name": "Balamurugan M",
+        "rollNo": "26PCA102",
+        "category": "Medium"
+      },
+      {
+        "name": "Dinesh K",
+        "rollNo": "26PCA103",
+        "category": "Hard"
+      },
+      {
+        "name": "Gopinath S",
+        "rollNo": "26PCA104",
+        "category": "Easy"
+      },
+      {
+        "name": "Hariharan V",
+        "rollNo": "26PCA201",
+        "category": "Easy"
+      },
+      {
+        "name": "Karthick Raja P",
+        "rollNo": "26PCA202",
+        "category": "Medium"
+      },
+      {
+        "name": "Manojkumar S",
+        "rollNo": "26PCA203",
+        "category": "Hard"
+      },
+      {
+        "name": "Naveen Prasath T",
+        "rollNo": "26PCA204",
+        "category": "Easy"
+      }
+    ];
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sampleUsers, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", "sample_users.json");
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const handleBulkImportUsers = async (jsonString) => {
+    try {
+      setIsLoading(true);
+      setBulkUserImportProgress('Validating User JSON format...');
+      const parsed = JSON.parse(jsonString);
+      const userArray = Array.isArray(parsed) ? parsed : [parsed];
+
+      if (userArray.length === 0) {
+        showPopup('User JSON array is empty.', 'error');
+        setIsLoading(false);
+        return;
+      }
+
+      setBulkUserImportProgress(`Preparing ${userArray.length} participants for upload...`);
+
+      const processedUsers = userArray.map((u, idx) => {
+        const name = (u.name || u.participantName || u.userName || `User ${idx + 1}`).trim();
+        const rollNo = (u.rollNo || u.roll_no || u.lotNo || u.lot_no || `LOT-${idx + 1}`).trim();
+        let cat = (u.category || 'Easy').trim();
+        cat = cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+        if (!['Easy', 'Medium', 'Hard'].includes(cat)) {
+          cat = 'Easy';
+        }
+
+        return {
+          name: name,
+          roll_no: rollNo,
+          category: cat,
+          tab_switches: 0,
+          copy_paste_count: 0,
+          score: 0,
+          current_code: '',
+          is_finished: false
+        };
+      });
+
+      // Write in batches of 50 into Supabase
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < processedUsers.length; i += BATCH_SIZE) {
+        const chunk = processedUsers.slice(i, i + BATCH_SIZE);
+        setBulkUserImportProgress(`Uploading participants ${i + 1} to ${Math.min(i + BATCH_SIZE, processedUsers.length)}...`);
+        const { error } = await supabase.from('users').insert(chunk);
+        if (error) throw error;
+      }
+
+      showPopup(`Successfully registered ${processedUsers.length} users into Supabase!`, 'success');
+      setIsBulkUserModalOpen(false);
+      setBulkUserJsonInput('');
+      setBulkUserImportProgress('');
+      setLoadedUserFileName('');
+      
+      // Refresh user list
+      const { data: uRows } = await supabase.from('users').select('*');
+      if (uRows) {
+        const mapped = uRows.map(u => ({
+          ...u,
+          rollNo: u.roll_no || u.rollNo,
+          tabSwitches: u.tab_switches ?? u.tabSwitches ?? 0,
+          copyPasteCount: u.copy_paste_count ?? u.copyPasteCount ?? 0,
+          totalSubmissionsCount: u.total_submissions_count ?? u.totalSubmissionsCount ?? 0,
+          elapsedTimeMs: u.elapsed_time_ms ?? u.elapsedTimeMs ?? 0,
+          isFinished: u.is_finished ?? u.isFinished ?? false,
+          selectedQuestionId: u.selected_question_id || u.selectedQuestionId,
+          completedQuestions: u.completed_questions || u.completedQuestions || [],
+          cumulativeClearedErrors: u.cumulative_cleared_errors ?? u.cumulativeClearedErrors ?? 0,
+          cumulativeTotalErrors: u.cumulative_total_errors ?? u.cumulativeTotalErrors ?? 0,
+          currentCode: u.current_code || u.currentCode || ''
+        }));
+        mapped.sort((a, b) => ((a.rollNo || '') > (b.rollNo || '') ? 1 : -1));
+        setLiveUsers(mapped);
+      }
+    } catch (err) {
+      console.error("Error in bulk user import:", err);
+      showPopup(`Bulk user import failed: ${err.message}`, 'error');
+    } finally {
+      setIsLoading(false);
+      setBulkUserImportProgress('');
+    }
+  };
+
+  const handleDeleteAllUsers = () => {
+    setPopup({
+      message: `WARNING: Are you sure you want to DELETE ALL ${liveUsers.length} USERS from the database? This action cannot be undone!`,
+      type: 'warning',
+      onConfirm: async () => {
+        setIsLoading(true);
+        try {
+          const { error } = await supabase.from('users').delete().not('id', 'is', null);
+          if (error) throw error;
+          setLiveUsers([]);
+          showPopup(`Deleted all users. User list is now empty.`, 'warning');
+        } catch (err) {
+          console.error(err);
+          showPopup("Failed to delete users.", "error");
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    });
+  };
 
   // Event State
   const [eventStatus, setEventStatus] = useState('waiting');
@@ -1720,15 +1883,121 @@ const AdminDashboard = () => {
           </div>
         );
 
-      case 'users':
+      case 'users': {
+        const sectionACount = liveUsers.filter(u => getParticipantSection(u.rollNo) === 'A').length;
+        const sectionBCount = liveUsers.filter(u => getParticipantSection(u.rollNo) === 'B').length;
+        const easyCount = liveUsers.filter(u => (u.category || 'Easy') === 'Easy').length;
+        const mediumCount = liveUsers.filter(u => u.category === 'Medium').length;
+        const hardCount = liveUsers.filter(u => u.category === 'Hard').length;
+
+        const filteredUsersList = liveUsers.filter(u => {
+          const userSec = getParticipantSection(u.rollNo);
+          if (userSectionFilter !== 'ALL' && userSec !== userSectionFilter) {
+            return false;
+          }
+
+          const userCat = u.category || 'Easy';
+          if (userCategoryFilter !== 'ALL' && userCat.toLowerCase() !== userCategoryFilter.toLowerCase()) {
+            return false;
+          }
+
+          if (!userSearchQuery.trim()) return true;
+          const q = userSearchQuery.toLowerCase().trim();
+          const nameMatch = (u.name || '').toLowerCase().includes(q);
+          const rollMatch = (u.rollNo || '').toLowerCase().includes(q);
+          return nameMatch || rollMatch;
+        });
+
         return (
           <div className="glass-panel" style={{ padding: '2rem' }}>
-              <h2 className="glow-text-cyan" style={{ marginBottom: '1.5rem' }}>{editingUserId ? 'EDIT USER' : 'MANUAL USER REGISTRATION'}</h2>
-              <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '500px' }}>
-                <div><label>PARTICIPANT NAME</label><input type="text" className="input-field" value={userForm.name} onChange={(e) => setUserForm({ ...userForm, name: e.target.value })} required /></div>
-                <div><label>TEAM IDENTIFIER (LOT #)</label><input type="text" className="input-field" value={userForm.rollNo} onChange={(e) => setUserForm({ ...userForm, rollNo: e.target.value })} required /></div>
+            {/* Top Toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h2 className="glow-text-cyan" style={{ margin: 0, fontSize: '1.4rem' }}>
+                  👥 PARTICIPANT REGISTRATION & BULK DATA UPLOAD
+                </h2>
+                <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  Register individual participants or upload batch user data via JSON template
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsBulkUserModalOpen(true)}
+                  className="btn-primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', fontSize: '0.86rem', fontWeight: 'bold' }}
+                >
+                  <Upload size={16} /> 📥 BULK IMPORT USERS
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadSampleUserTemplate}
+                  className="btn-secondary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', fontSize: '0.86rem' }}
+                >
+                  <FileDown size={16} /> 📄 USER JSON TEMPLATE
+                </button>
+                {liveUsers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteAllUsers}
+                    className="btn-secondary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 18px', fontSize: '0.86rem', borderColor: 'var(--accent-magenta)', color: 'var(--accent-magenta)' }}
+                  >
+                    <Trash2 size={16} /> 🗑️ DELETE ALL ({liveUsers.length})
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Live Statistics Summary Strip */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+              <div style={{ background: 'rgba(0, 127, 215, 0.08)', border: '1px solid rgba(0, 127, 215, 0.3)', borderRadius: '8px', padding: '0.8rem 1rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Total Registered</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--accent-cyan)', marginTop: '2px' }}>{liveUsers.length}</div>
+              </div>
+              <div style={{ background: 'rgba(0, 127, 215, 0.08)', border: '1px solid #007fd7', borderRadius: '8px', padding: '0.8rem 1rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.72rem', color: '#007fd7', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Section A (1xx)</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#007fd7', marginTop: '2px' }}>{sectionACount}</div>
+              </div>
+              <div style={{ background: 'rgba(222, 6, 6, 0.08)', border: '1px solid #de0606', borderRadius: '8px', padding: '0.8rem 1rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.72rem', color: '#de0606', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Section B (2xx)</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#de0606', marginTop: '2px' }}>{sectionBCount}</div>
+              </div>
+              <div style={{ background: 'rgba(0, 127, 215, 0.08)', border: '1px solid rgba(0, 127, 215, 0.4)', borderRadius: '8px', padding: '0.8rem 1rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.72rem', color: '#007fd7', textTransform: 'uppercase', letterSpacing: '1px' }}>Easy Tier</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#007fd7', marginTop: '2px' }}>{easyCount}</div>
+              </div>
+              <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '8px', padding: '0.8rem 1rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.72rem', color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '1px' }}>Medium Tier</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#F59E0B', marginTop: '2px' }}>{mediumCount}</div>
+              </div>
+              <div style={{ background: 'rgba(222, 6, 6, 0.08)', border: '1px solid rgba(222, 6, 6, 0.4)', borderRadius: '8px', padding: '0.8rem 1rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.72rem', color: '#de0606', textTransform: 'uppercase', letterSpacing: '1px' }}>Hard Tier</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#de0606', marginTop: '2px' }}>{hardCount}</div>
+              </div>
+            </div>
+
+            {/* Manual User Registration Form */}
+            <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '1.5rem', marginBottom: '2.5rem' }}>
+              <h3 className="glow-text-cyan" style={{ marginBottom: '1.2rem', fontSize: '1.1rem' }}>
+                {editingUserId ? '✏️ EDIT PARTICIPANT' : '➕ MANUAL SINGLE USER REGISTRATION'}
+              </h3>
+              <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', maxWidth: '650px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--accent-cyan)', fontSize: '0.8rem' }}>PARTICIPANT NAME</label>
+                    <input type="text" className="input-field" placeholder="e.g. Aravind Kumar R" value={userForm.name} onChange={(e) => setUserForm({ ...userForm, name: e.target.value })} required />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--accent-cyan)', fontSize: '0.8rem' }}>LOT / ROLL NUMBER (e.g. 26PCA101)</label>
+                    <input type="text" className="input-field" placeholder="e.g. 26PCA101 (Sec A) or 26PCA201 (Sec B)" value={userForm.rollNo} onChange={(e) => setUserForm({ ...userForm, rollNo: e.target.value })} required />
+                  </div>
+                </div>
+
                 <div>
-                  <label>CATEGORY (QUESTION DIFFICULTY)</label>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--accent-cyan)', fontSize: '0.8rem' }}>QUESTION DIFFICULTY CATEGORY</label>
                   <select
                     className="input-field"
                     value={userForm.category || 'Easy'}
@@ -1741,8 +2010,10 @@ const AdminDashboard = () => {
                   </select>
                 </div>
                 
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                  <button type="submit" className="btn-primary">{editingUserId ? 'UPDATE USER' : 'ADD USER'}</button>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                  <button type="submit" className="btn-primary" style={{ padding: '10px 22px' }}>
+                    {editingUserId ? '💾 UPDATE PARTICIPANT' : '➕ ADD PARTICIPANT'}
+                  </button>
                   {editingUserId && (
                     <button type="button" className="btn-secondary" onClick={() => {
                       setEditingUserId(null);
@@ -1750,35 +2021,145 @@ const AdminDashboard = () => {
                     }}>CANCEL</button>
                   )}
                 </div>
-                {userStatus && <p style={{ color: 'var(--accent-cyan)', marginTop: '1rem' }}>{userStatus}</p>}
+                {userStatus && <p style={{ color: 'var(--accent-cyan)', marginTop: '0.5rem', fontSize: '0.9rem' }}>{userStatus}</p>}
               </form>
+            </div>
 
-              <h2 className="glow-text-cyan" style={{ margin: '3rem 0 1.5rem 0' }}>REGISTERED USERS</h2>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--accent-cyan)' }}>
-                      <th style={{ padding: '1rem' }}>LOT #</th>
-                      <th style={{ padding: '1rem' }}>NAME</th>
-                      <th style={{ padding: '1rem' }}>CATEGORY</th>
-                      <th style={{ padding: '1rem' }}>LANGUAGE</th>
-                      <th style={{ padding: '1rem' }}>PROGRESS</th>
-                      <th style={{ padding: '1rem' }}>ACTION</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {liveUsers.map(u => {
-                      const userCat = u.category || 'Easy';
-                      const badgeColor = userCat === 'Hard' ? '#de0606' : userCat === 'Medium' ? '#F59E0B' : '#007fd7';
-                      const badgeBg = userCat === 'Hard' ? 'rgba(222, 6, 6, 0.15)' : userCat === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(0, 127, 215, 0.15)';
-                      return (
-                      <tr key={u.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                        <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>{u.rollNo}</span>
-                          <span style={{ padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem', background: 'rgba(0, 127, 215, 0.15)', color: '#007fd7', border: '1px solid #007fd7' }}>UG</span>
+            {/* Registered Users Section Header & Search Filters */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <h3 className="glow-text-cyan" style={{ margin: 0, fontSize: '1.2rem' }}>
+                📋 REGISTERED PARTICIPANTS ({filteredUsersList.length} / {liveUsers.length})
+              </h3>
+            </div>
+
+            {/* Search and Filters Bar */}
+            <div style={{ background: 'var(--bg-deep-navy)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 280px', position: 'relative' }}>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="🔍 Search by Lot # (e.g. 26PCA101) or Participant Name..."
+                    value={userSearchQuery}
+                    onChange={e => setUserSearchQuery(e.target.value)}
+                    style={{ paddingLeft: '2.5rem', width: '100%' }}
+                  />
+                  <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                </div>
+
+                {/* Section Filter Pills */}
+                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginRight: '4px' }}>Section:</span>
+                  {[
+                    { key: 'ALL', label: 'All Sections' },
+                    { key: 'A', label: 'Section A (1xx)' },
+                    { key: 'B', label: 'Section B (2xx)' }
+                  ].map(sec => {
+                    const isSelected = userSectionFilter === sec.key;
+                    return (
+                      <button
+                        key={sec.key}
+                        type="button"
+                        onClick={() => setUserSectionFilter(sec.key)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.78rem',
+                          fontWeight: isSelected ? 'bold' : 'normal',
+                          background: isSelected ? 'var(--accent-cyan)' : 'rgba(255, 255, 255, 0.05)',
+                          color: isSelected ? 'var(--bg-deep-navy)' : 'var(--text-primary)',
+                          border: isSelected ? '1px solid var(--accent-cyan)' : '1px solid rgba(255, 255, 255, 0.1)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {sec.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Category Filter Pills */}
+                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginRight: '4px' }}>Category:</span>
+                  {[
+                    { key: 'ALL', label: 'All Tiers' },
+                    { key: 'Easy', label: 'Easy' },
+                    { key: 'Medium', label: 'Medium' },
+                    { key: 'Hard', label: 'Hard' }
+                  ].map(cat => {
+                    const isSelected = userCategoryFilter === cat.key;
+                    return (
+                      <button
+                        key={cat.key}
+                        type="button"
+                        onClick={() => setUserCategoryFilter(cat.key)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.78rem',
+                          fontWeight: isSelected ? 'bold' : 'normal',
+                          background: isSelected ? 'var(--accent-cyan)' : 'rgba(255, 255, 255, 0.05)',
+                          color: isSelected ? 'var(--bg-deep-navy)' : 'var(--text-primary)',
+                          border: isSelected ? '1px solid var(--accent-cyan)' : '1px solid rgba(255, 255, 255, 0.1)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {cat.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Participants Table */}
+            <div style={{ overflowX: 'auto', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--accent-cyan)', background: 'rgba(0, 127, 215, 0.08)' }}>
+                    <th style={{ padding: '0.9rem 1rem', fontSize: '0.82rem', color: 'var(--accent-cyan)' }}>LOT / ROLL #</th>
+                    <th style={{ padding: '0.9rem 1rem', fontSize: '0.82rem', color: 'var(--accent-cyan)' }}>SECTION</th>
+                    <th style={{ padding: '0.9rem 1rem', fontSize: '0.82rem', color: 'var(--accent-cyan)' }}>PARTICIPANT NAME</th>
+                    <th style={{ padding: '0.9rem 1rem', fontSize: '0.82rem', color: 'var(--accent-cyan)' }}>TIER</th>
+                    <th style={{ padding: '0.9rem 1rem', fontSize: '0.82rem', color: 'var(--accent-cyan)' }}>PROGRESS</th>
+                    <th style={{ padding: '0.9rem 1rem', fontSize: '0.82rem', color: 'var(--accent-cyan)' }}>STATUS</th>
+                    <th style={{ padding: '0.9rem 1rem', fontSize: '0.82rem', color: 'var(--accent-cyan)' }}>ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsersList.map(u => {
+                    const userCat = u.category || 'Easy';
+                    const userSec = getParticipantSection(u.rollNo);
+                    const badgeColor = userCat === 'Hard' ? '#de0606' : userCat === 'Medium' ? '#F59E0B' : '#007fd7';
+                    const badgeBg = userCat === 'Hard' ? 'rgba(222, 6, 6, 0.15)' : userCat === 'Medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(0, 127, 215, 0.15)';
+                    
+                    const secBadgeColor = userSec === 'A' ? '#007fd7' : userSec === 'B' ? '#de0606' : '#888';
+                    const secBadgeBg = userSec === 'A' ? 'rgba(0, 127, 215, 0.15)' : userSec === 'B' ? 'rgba(222, 6, 6, 0.15)' : 'rgba(255,255,255,0.05)';
+
+                    return (
+                      <tr key={u.id} style={{ borderBottom: '1px solid var(--border-subtle)', background: 'transparent', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '0.9rem 1rem', fontWeight: 'bold', fontFamily: 'var(--font-mono)' }}>
+                          {u.rollNo}
                         </td>
-                        <td style={{ padding: '1rem' }}>{u.name}</td>
-                        <td style={{ padding: '1rem' }}>
+                        <td style={{ padding: '0.9rem 1rem' }}>
+                          <span style={{
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            fontSize: '0.72rem',
+                            fontWeight: 'bold',
+                            background: secBadgeBg,
+                            color: secBadgeColor,
+                            border: `1px solid ${secBadgeColor}`
+                          }}>
+                            {userSec === 'ALL' ? 'GENERAL' : `SEC ${userSec}`}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.9rem 1rem', color: 'var(--text-primary)', fontWeight: '500' }}>
+                          {u.name}
+                        </td>
+                        <td style={{ padding: '0.9rem 1rem' }}>
                           <span style={{
                             padding: '3px 10px',
                             borderRadius: '12px',
@@ -1792,22 +2173,54 @@ const AdminDashboard = () => {
                             {userCat}
                           </span>
                         </td>
-                        <td style={{ padding: '1rem', textTransform: 'uppercase' }}>{u.selectedLanguage || 'PENDING'}</td>
-                        <td style={{ padding: '1rem' }}>
-                            {(u.cumulativeClearedErrors || 0) + (u.clearedErrors || 0)} / {(u.cumulativeTotalErrors || 0) + (u.totalErrors || 0)}
+                        <td style={{ padding: '0.9rem 1rem', fontSize: '0.85rem' }}>
+                          {(u.cumulativeClearedErrors || 0) + (u.clearedErrors || 0)} / {(u.cumulativeTotalErrors || 0) + (u.totalErrors || 0)} Errors
                         </td>
-                        <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem' }}>
-                          <button onClick={() => handleEditUser(u)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-cyan)', cursor: 'pointer' }}><Edit size={18} /></button>
-                          <button onClick={() => handleDeleteUser(u.id, u.name)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-magenta)', cursor: 'pointer' }}><Trash2 size={18} /></button>
+                        <td style={{ padding: '0.9rem 1rem' }}>
+                          {u.isFinished ? (
+                            <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(0, 127, 215, 0.2)', color: '#007fd7', border: '1px solid #007fd7' }}>
+                              COMPLETED
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                              READY
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '0.9rem 1rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button 
+                              onClick={() => handleEditUser(u)} 
+                              title="Edit User"
+                              style={{ background: 'transparent', border: '1px solid var(--accent-cyan)', borderRadius: '4px', color: 'var(--accent-cyan)', padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                            >
+                              <Edit size={15} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteUser(u.id, u.name)} 
+                              title="Delete User"
+                              style={{ background: 'transparent', border: '1px solid var(--accent-magenta)', borderRadius: '4px', color: 'var(--accent-magenta)', padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
                   })}
-                  </tbody>
-                </table>
-              </div>
+                  {filteredUsersList.length === 0 && (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                        {liveUsers.length === 0 ? 'No participants registered yet. Use "Manual Registration" or "Bulk Import Users" above.' : `No participants matching "${userSearchQuery}".`}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         );
+      }
 
       case 'event':
         return (
@@ -3269,7 +3682,173 @@ const AdminDashboard = () => {
                   cursor: (!bulkJsonInput.trim() || isLoading) ? 'not-allowed' : 'pointer'
                 }}
               >
-                🚀 Import & Save to Firestore
+                🚀 Import & Save to Supabase
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk User Upload Modal */}
+      {isBulkUserModalOpen && (
+        <div 
+          className="no-print" 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            background: 'rgba(3, 7, 20, 0.88)', 
+            backdropFilter: 'blur(10px)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 99999,
+            padding: '1.5rem'
+          }}
+        >
+          <div 
+            style={{ 
+              background: 'var(--bg-deep-navy)', 
+              border: '2px solid var(--accent-cyan)', 
+              borderRadius: '12px', 
+              width: '100%', 
+              maxWidth: '850px', 
+              maxHeight: '90vh',
+              boxShadow: '0 0 50px rgba(0, 127, 215, 0.35)', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              overflow: 'hidden',
+              animation: 'slideUpFade 0.25s ease-out'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ padding: '1.2rem 1.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0, 127, 215, 0.2)', background: 'rgba(0, 127, 215, 0.04)' }}>
+              <div>
+                <h3 className="glow-text-cyan" style={{ margin: 0, fontSize: '1.35rem', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  👥 BULK PARTICIPANTS UPLOAD (JSON)
+                </h3>
+                <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+                  Upload participant list (Section A: 26PCA1xx, Section B: 26PCA2xx) in one batch
+                </p>
+              </div>
+              <button 
+                onClick={() => { setIsBulkUserModalOpen(false); setBulkUserJsonInput(''); setBulkUserImportProgress(''); setLoadedUserFileName(''); }} 
+                style={{ background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'var(--accent-cyan)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'; }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem 1.8rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              
+              {/* Action Toolbar */}
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <label 
+                  className="btn-primary" 
+                  style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    cursor: 'pointer', 
+                    padding: '10px 20px', 
+                    fontSize: '0.88rem',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  <Upload size={16} /> Choose .JSON File from Computer
+                  <input
+                    type="file"
+                    accept=".json"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      setLoadedUserFileName(file.name);
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setBulkUserJsonInput(event.target.result);
+                      };
+                      reader.readAsText(file);
+                    }}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadSampleUserTemplate}
+                  className="btn-secondary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', fontSize: '0.88rem' }}
+                >
+                  <FileDown size={16} /> Download Sample Template
+                </button>
+
+                {loadedUserFileName && (
+                  <span style={{ fontSize: '0.82rem', padding: '4px 12px', borderRadius: '12px', background: 'rgba(0, 127, 215, 0.15)', color: '#007fd7', border: '1px solid #007fd7', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle size={14} /> {loadedUserFileName}
+                  </span>
+                )}
+              </div>
+
+              {/* JSON Editor Box */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.82rem', color: 'var(--accent-cyan)', fontWeight: 'bold', letterSpacing: '0.5px' }}>
+                  OR PASTE / EDIT PARTICIPANTS JSON DIRECTLY:
+                </label>
+                <textarea
+                  className="input-field"
+                  rows="11"
+                  value={bulkUserJsonInput}
+                  onChange={(e) => setBulkUserJsonInput(e.target.value)}
+                  placeholder='[&#10;  {&#10;    "name": "Aravind Kumar R",&#10;    "rollNo": "26PCA101",&#10;    "category": "Easy"&#10;  },&#10;  {&#10;    "name": "Hariharan V",&#10;    "rollNo": "26PCA201",&#10;    "category": "Medium"&#10;  }&#10;]'
+                  style={{ 
+                    fontFamily: 'Consolas, Monaco, "Courier New", monospace', 
+                    fontSize: '0.84rem', 
+                    background: '#030816',
+                    border: '1px solid rgba(0, 127, 215, 0.3)',
+                    color: '#007fd7',
+                    lineHeight: '1.5',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    whiteSpace: 'pre',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              {bulkUserImportProgress && (
+                <div style={{ padding: '10px 14px', background: 'rgba(0, 127, 215, 0.1)', border: '1px solid var(--accent-cyan)', borderRadius: '8px', color: 'var(--accent-cyan)', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  <span>{bulkUserImportProgress}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '1rem 1.8rem', borderTop: '1px solid rgba(0, 127, 215, 0.2)', background: 'rgba(3, 7, 20, 0.95)', display: 'flex', justifyContent: 'flex-end', gap: '1rem', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={() => { setIsBulkUserModalOpen(false); setBulkUserJsonInput(''); setBulkUserImportProgress(''); setLoadedUserFileName(''); }}
+                className="btn-secondary"
+                style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBulkImportUsers(bulkUserJsonInput)}
+                className="btn-primary"
+                disabled={!bulkUserJsonInput.trim() || isLoading}
+                style={{ 
+                  padding: '10px 26px', 
+                  fontSize: '0.92rem', 
+                  fontWeight: 'bold',
+                  boxShadow: '0 0 20px rgba(0, 127, 215, 0.4)',
+                  cursor: (!bulkUserJsonInput.trim() || isLoading) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                🚀 Import & Register Participants
               </button>
             </div>
           </div>
