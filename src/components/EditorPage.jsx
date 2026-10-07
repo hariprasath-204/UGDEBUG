@@ -70,7 +70,7 @@ const EditorPage = () => {
               description: qData.description,
               category: qData.category,
               phase: qData.phase || 'cpp',
-              points: qData.points || 100,
+              points: qData.points || 10,
               expectedOutput: qData.expected_output || qData.expectedOutput,
               initialCode: qData.initial_code || qData.initialCode,
               correctCode: qData.correct_code || qData.correctCode,
@@ -92,7 +92,7 @@ const EditorPage = () => {
               description: qData.description,
               category: qData.category,
               phase: qData.phase || 'cpp',
-              points: qData.points || 100,
+              points: qData.points || 10,
               expectedOutput: qData.expected_output || qData.expectedOutput,
               initialCode: qData.initial_code || qData.initialCode,
               correctCode: qData.correct_code || qData.correctCode,
@@ -272,18 +272,17 @@ const EditorPage = () => {
     const handleVisibilityChange = async () => {
       if (document.hidden) {
         cheatingRef.current.tabSwitches += 1;
-        setPopup({ message: "WARNING: Tab switching detected! Penalty: -2 Points deducted.", type: "warning" });
+        setPopup({ message: "WARNING: Tab switching detected! Please stay on the test window.", type: "warning" });
         if (userId) {
           try {
-            const { data: uData } = await supabase.from('users').select('tab_switches, score').eq('id', userId).single();
+            const { data: uData } = await supabase.from('users').select('tab_switches').eq('id', userId).single();
             if (uData) {
               await supabase.from('users').update({
-                tab_switches: (uData.tab_switches || 0) + 1,
-                score: (uData.score || 0) - 2
+                tab_switches: (uData.tab_switches || 0) + 1
               }).eq('id', userId);
             }
           } catch (e) {
-            console.error("Error updating tab switch penalty:", e);
+            console.error("Error updating tab switches:", e);
           }
         }
       }
@@ -344,7 +343,6 @@ const EditorPage = () => {
     setIsCompiling(true);
     setOutput('Compiling code...');
     
-    // 5 custom free trial keys + Firestore/Supabase dynamic keys
     const candidateKeys = [
       ...onlineCompilerKeys,
       'a6ed2c1539a350079a242c2c2deecc36',
@@ -354,93 +352,27 @@ const EditorPage = () => {
       '31f89d72d1ae6013e4925c06bac75502'
     ].filter(Boolean);
 
-    const compilerName = 'g++-15';
-
     try {
-      // 1. Direct OnlineCompiler.io execution with client-side key failover
-      for (const key of candidateKeys) {
-        try {
-          const ocResp = await axios.post('https://api.onlinecompiler.io/api/run-code-sync/', {
-            compiler: compilerName,
-            code: codeRef.current,
-            input: ""
-          }, {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': key,
-              'ApiKey': key
-            },
-            timeout: 15000
-          });
+      // Direct call to Backend Compiler endpoint (handles multi-key pool rotation & Piston failover without browser CORS errors)
+      const response = await axios.post(`/api/compile`, {
+        code: codeRef.current,
+        compiler: activeLanguage,
+        onlineCompilerKeys: candidateKeys
+      }, { timeout: 20000 });
 
-          let outputText = [
-            ocResp.data?.output,
-            ocResp.data?.result,
-            ocResp.data?.stdout
-          ].filter(s => typeof s === 'string' && s.trim().length > 0).join('\n');
-
-          let errorText = [
-            ocResp.data?.error,
-            ocResp.data?.stderr,
-            ocResp.data?.compile_error,
-            ocResp.data?.compiler_error,
-            ocResp.data?.exception,
-            ocResp.data?.message
-          ].filter(s => typeof s === 'string' && s.trim().length > 0 && s !== outputText).join('\n');
-
-          const checkStr = (errorText + ' ' + (ocResp.data?.status || '')).toLowerCase();
-          if (
-            ocResp.status === 429 || ocResp.status === 401 || ocResp.status === 403 ||
-            checkStr.includes('limit exceeded') ||
-            checkStr.includes('quota') ||
-            checkStr.includes('daily limit') ||
-            checkStr.includes('unauthorized') ||
-            checkStr.includes('invalid api key')
-          ) {
-            console.warn(`Direct OnlineCompiler key (${key.slice(0, 6)}...) limit reached, switching to next key...`);
-            continue;
-          }
-
-          if (
-            (errorText.includes('Internal error: code execution failed') || ocResp.data?.status === 'timeout' || ocResp.data?.signal === 'SIGXCPU' || ocResp.data?.signal === 'SIGKILL') &&
-            !errorText.includes('error:') && !errorText.includes('fatal error:') && !errorText.includes('undefined reference')
-          ) {
-            errorText = "Runtime Error (SIGSEGV / Infinite Loop / Out-of-Bounds): Execution failed or timed out. Please check your loop conditions and array/pointer bounds.";
-          }
-
-          let combined = [outputText, errorText].filter(Boolean).join('\n\n');
-          if (!combined.trim()) {
-            combined = "No output returned.";
-          }
-          setOutput(combined);
-          return combined;
-        } catch (directErr) {
-          console.warn(`Direct OnlineCompiler attempt with key (${key.slice(0, 6)}...) failed:`, directErr?.message);
-        }
+      const result = response.data?.program_message || response.data?.compiler_error || "No output";
+      setOutput(result);
+      return result;
+    } catch (backendErr) {
+      console.error("Backend compiler error:", backendErr?.message);
+      let errorMsg = "";
+      if (backendErr.code === 'ECONNABORTED' || backendErr.message?.includes('timeout')) {
+        errorMsg = "Execution Timed Out / Infinite Loop Detected: Execution took too long and was stopped. Please check your loop termination conditions.";
+      } else {
+        errorMsg = backendErr?.response?.data?.detail || backendErr?.response?.data?.error || backendErr?.response?.data?.message || "Compilation Notice: Unable to connect to compiler engine. Please check your network connection.";
       }
-
-      // 2. Secondary Engine: Backend /api/compile with backend key pool failover
-      try {
-        const response = await axios.post(`/api/compile`, {
-          code: codeRef.current,
-          compiler: activeLanguage,
-          onlineCompilerKeys: candidateKeys
-        }, { timeout: 18000 });
-
-        const result = response.data.program_message || response.data.compiler_error || "No output";
-        setOutput(result);
-        return result;
-      } catch (backendErr) {
-        console.error("Backend compiler failed:", backendErr?.message);
-        let errorMsg = "";
-        if (backendErr.code === 'ECONNABORTED' || backendErr.message?.includes('timeout')) {
-          errorMsg = "Execution Timed Out / Infinite Loop Detected: Execution took too long and was stopped. Please check your loop termination conditions.";
-        } else {
-          errorMsg = backendErr?.response?.data?.error || backendErr?.response?.data?.message || "Compilation Notice: Unable to connect to compiler engine. Please check your network connection.";
-        }
-        setOutput(errorMsg);
-        return null;
-      }
+      setOutput(errorMsg);
+      return null;
     } finally {
       setIsCompiling(false);
     }
@@ -477,7 +409,7 @@ const EditorPage = () => {
             description: qDoc.description,
             category: qDoc.category,
             phase: qDoc.phase || 'cpp',
-            points: qDoc.points || 100,
+            points: qDoc.points || 10,
             expectedOutput: qDoc.expected_output || qDoc.expectedOutput,
             initialCode: qDoc.initial_code || qDoc.initialCode,
             correctCode: qDoc.correct_code || qDoc.correctCode,
@@ -531,9 +463,10 @@ const EditorPage = () => {
       return;
     }
 
-    // Dynamic error calculation independent of component render state
+    // Dynamic error calculation scaled to question points (default 10)
     const calcErrorsForCode = (targetQ, userCode, lang = 'cpp') => {
-      if (!targetQ) return { total: 1, cleared: 0, ptsPerErr: 100 };
+      const qPts = parseInt(targetQ?.points) || 10;
+      if (!targetQ) return { total: 1, cleared: 0, ptsPerErr: qPts, qPts };
       const v = targetQ.variants?.[lang] || targetQ.variants?.cpp || targetQ.variants?.c || {};
       const rawErrorStr = String(v.errorLines || targetQ.error_lines || targetQ.errorLines || '');
       const groups = rawErrorStr
@@ -542,7 +475,7 @@ const EditorPage = () => {
         .filter(g => g.length > 0);
       
       const total = Math.max(1, groups.length || (v.errorLinesArray?.length || 1));
-      const ptsPerErr = +(100 / total).toFixed(2);
+      const ptsPerErr = +(qPts / total).toFixed(2);
       const initialCode = v.initialCode || targetQ.initial_code || targetQ.initialCode || '';
       const initialLines = initialCode.split('\n');
       const userLinesArr = (userCode || '').split('\n');
@@ -567,16 +500,17 @@ const EditorPage = () => {
         cleared = Math.min(total, 1);
       }
 
-      return { total, cleared: Math.min(total, cleared), ptsPerErr };
+      return { total, cleared: Math.min(total, cleared), ptsPerErr, qPts };
     };
 
-    const { total: evalTotal, cleared: evalCleared, ptsPerErr: evalPtsPer } = calcErrorsForCode(targetQuestion, currentCodeValue, activeLanguage);
+    const { total: evalTotal, cleared: evalCleared, ptsPerErr: evalPtsPer, qPts: targetPts } = calcErrorsForCode(targetQuestion, currentCodeValue, activeLanguage);
+    const maxQuestionPoints = targetPts || parseInt(targetQuestion?.points) || 10;
     
     let score = 0;
     if (isOutputCorrect || evalCleared === evalTotal) {
-      score = 100;
+      score = maxQuestionPoints;
     } else {
-      score = Math.min(100, Math.round(evalCleared * evalPtsPer));
+      score = Math.min(maxQuestionPoints, Math.round(evalCleared * evalPtsPer));
     }
 
     const endTime = new Date().toISOString();
@@ -618,7 +552,7 @@ const EditorPage = () => {
         score: score || 0,
         clearedErrors: finalClearedErrors || 0,
         totalErrors: finalTotalErrors || 1,
-        pointsPerError: evalPtsPer || 100,
+        pointsPerError: evalPtsPer || 10,
         pointFormula: `${finalClearedErrors}/${finalTotalErrors} errors × ${evalPtsPer} pts = ${score} pts`,
         codeLines: userLines || 0,
         targetLines: correctLines || 0,

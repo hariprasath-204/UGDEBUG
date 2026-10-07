@@ -3,7 +3,7 @@
 -- Target Supabase Project: ksikkbvxtnpwnisvckeg
 -- ==============================================================================
 
--- 1. Atomic Tab Switch Penalty
+-- 1. Atomic Tab Switch Warning Tracker
 -- Prevents race conditions when a student switches tabs rapidly
 CREATE OR REPLACE FUNCTION record_tab_switch_penalty(target_user_id TEXT)
 RETURNS void AS $$
@@ -11,7 +11,6 @@ BEGIN
     UPDATE users
     SET 
         tab_switches = COALESCE(tab_switches, 0) + 1,
-        score = COALESCE(score, 0) - 2,
         updated_at = NOW()
     WHERE id = target_user_id;
 END;

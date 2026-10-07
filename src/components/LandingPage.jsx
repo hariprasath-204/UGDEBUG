@@ -118,31 +118,8 @@ const LandingPage = () => {
       )
       .subscribe();
 
-    // 3. Realtime Subscription for users table
-    const usersChannel = supabase
-      .channel('landing:users')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'users' },
-        async () => {
-          const { data: usersRows } = await supabase.from('users').select('*');
-          if (usersRows) {
-            const formatted = usersRows.map(u => ({
-              id: u.id,
-              rollNo: u.roll_no || u.rollNo,
-              name: u.name,
-              category: u.category,
-              ...u
-            }));
-            setUsersList(formatted);
-          }
-        }
-      )
-      .subscribe();
-
     return () => {
       supabase.removeChannel(settingsChannel);
-      supabase.removeChannel(usersChannel);
     };
   }, [language]);
 

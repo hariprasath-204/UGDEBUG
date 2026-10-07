@@ -12,6 +12,7 @@ const MEDAL_INFO = [
 
 const TopWinnersPage = () => {
   const [allUsers, setAllUsers] = useState([]);
+  const [questionsCount, setQuestionsCount] = useState(2);
   const [category] = useState('UG');
   const [loading, setLoading] = useState(true);
   const [revealedIndex, setRevealedIndex] = useState(-1);
@@ -20,7 +21,7 @@ const TopWinnersPage = () => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('*');
+        .select('id, roll_no, name, category, score, is_finished, total_submissions_count, elapsed_time_ms, completed_questions, cumulative_cleared_errors, cumulative_total_errors, penalty_points, tab_switches, copy_paste_count');
 
       if (error) {
         console.error('Error fetching winners:', error);
@@ -28,6 +29,15 @@ const TopWinnersPage = () => {
       }
 
       setAllUsers(data || []);
+
+      const { data: eventRow } = await supabase
+        .from('settings')
+        .select('data')
+        .eq('id', 'event')
+        .single();
+      if (eventRow?.data?.questionsPerStudent) {
+        setQuestionsCount(parseInt(eventRow.data.questionsPerStudent) || 2);
+      }
     } catch (err) {
       console.error("Error fetching top winners:", err);
     } finally {
@@ -37,19 +47,6 @@ const TopWinnersPage = () => {
 
   useEffect(() => {
     fetchWinners();
-
-    const channel = supabase
-      .channel('winners:users')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'users' },
-        () => fetchWinners()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   const users = getSortedParticipantsByCategory(allUsers, 'UG').slice(0, 3);
@@ -233,9 +230,12 @@ const TopWinnersPage = () => {
 
                 {/* Score Showcase */}
                 <div style={{ width: '100%', background: 'rgba(0,0,0,0.4)', borderRadius: '12px', padding: '1rem', border: '1px solid rgba(255,255,255,0.06)', marginBottom: '1rem', textAlign: 'center' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', letterSpacing: '1px' }}>FINAL SCORE</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', letterSpacing: '1px' }}>FINAL MARK</span>
                   <div style={{ fontSize: '2.4rem', fontWeight: 'bold', color: medal.color, textShadow: `0 0 20px ${medal.color}88` }}>
-                    {userScore} <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>PTS</span>
+                    {Math.max(0, +((userScore || 0) / (questionsCount || 2)).toFixed(1))} <span style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>/ 10</span>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    ({Math.max(0, userScore)} total pts)
                   </div>
                 </div>
 

@@ -1,39 +1,47 @@
 /**
- * Authoritative global sorting logic for CODATHAN Leaderboard and Winner Showcase.
+ * Authoritative global sorting logic for CODATHAN Leaderboard, Report Generation, and Winner Showcase.
  * 
  * Sorting Criteria (in exact priority order):
- * 1. Tab Switches Penalty: Participants with ANY tab switches (tabSwitches > 0) go LAST.
- * 2. Score: Higher score ranks above lower score.
+ * 1. Score / Points: Higher score / points ranks above lower score (top to bottom).
+ * 2. Errors Cleared / Fixed: More errors cleared ranks higher.
  * 3. Number of Executions: Fewer submissions / executions (totalSubmissionsCount) ranks higher.
  * 4. Total Timing Consumed: Faster total time taken (elapsedTimeMs) ranks higher.
+ * 5. Tab Switches (Tie-breaker only): Fewer tab switches as final tie-breaker.
  */
 export function sortParticipants(users) {
   return [...users].sort((a, b) => {
-    // 0. Tab switches penalty: any tab switch (> 0) pushes participant behind clean participants
-    const aTabs = (a.tab_switches ?? a.tabSwitches ?? 0) > 0 ? 1 : 0;
-    const bTabs = (b.tab_switches ?? b.tabSwitches ?? 0) > 0 ? 1 : 0;
-    if (aTabs !== bTabs) {
-      return aTabs - bTabs; // 0 (no tab switches) comes before 1 (has tab switches)
-    }
-
-    // 1. Higher score first
+    // 1. Higher score first (Top to Bottom point-based decision)
     const aScore = a.score || 0;
     const bScore = b.score || 0;
     if (bScore !== aScore) {
       return bScore - aScore;
     }
 
-    // 2. Number of executions (totalSubmissionsCount / total_submissions_count) - fewer executions first
+    // 2. Cumulative Cleared Errors (More errors fixed comes first)
+    const aCleared = (a.cumulative_cleared_errors ?? a.cumulativeClearedErrors ?? a.clearedErrors ?? 0);
+    const bCleared = (b.cumulative_cleared_errors ?? b.cumulativeClearedErrors ?? b.clearedErrors ?? 0);
+    if (bCleared !== aCleared) {
+      return bCleared - aCleared;
+    }
+
+    // 3. Number of executions (fewer executions / submissions comes first)
     const aSubs = a.total_submissions_count ?? a.totalSubmissionsCount ?? 0;
     const bSubs = b.total_submissions_count ?? b.totalSubmissionsCount ?? 0;
     if (aSubs !== bSubs) {
       return aSubs - bSubs;
     }
 
-    // 3. Total timing consumed (elapsedTimeMs / elapsed_time_ms) - faster time first
+    // 4. Total timing consumed (faster time taken comes first)
     const aTime = a.elapsed_time_ms ?? a.elapsedTimeMs ?? Infinity;
     const bTime = b.elapsed_time_ms ?? b.elapsedTimeMs ?? Infinity;
-    return aTime - bTime;
+    if (aTime !== bTime) {
+      return aTime - bTime;
+    }
+
+    // 5. Tab switches (tie-breaker only)
+    const aTabs = a.tab_switches ?? a.tabSwitches ?? 0;
+    const bTabs = b.tab_switches ?? b.tabSwitches ?? 0;
+    return aTabs - bTabs;
   });
 }
 

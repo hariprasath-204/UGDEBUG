@@ -112,6 +112,16 @@ const DEFAULT_BRANDING = {
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('questions');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Safety watchdog: Automatically release loading overlay after 10s if a network request hangs
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
   const [popup, setPopup] = useState(null);
   const [selectedConclusionUser, setSelectedConclusionUser] = useState(null);
   const [selectedSubUserId, setSelectedSubUserId] = useState(null);
@@ -145,7 +155,7 @@ const AdminDashboard = () => {
 
   // Question Form State
   const [formData, setFormData] = useState({
-    title: '', description: '', expectedOutput: '', points: 100, phase: 'cpp', category: 'Easy',
+    title: '', description: '', expectedOutput: '', points: 10, phase: 'cpp', category: 'Easy',
     variants: {
       c: { initialCode: '', correctCode: '', errorLines: '' },
       cpp: { initialCode: '', correctCode: '', errorLines: '' }
@@ -169,7 +179,7 @@ const AdminDashboard = () => {
         title: "C++ Bug: Vector Out of Bounds",
         phase: "cpp",
         description: "Fix the off-by-one loop index boundary condition in C++ vector iteration.",
-        points: 100,
+        points: 10,
         expectedOutput: "Sum: 15",
         variants: {
           cpp: {
@@ -241,7 +251,7 @@ const AdminDashboard = () => {
           title: q.title || `Question #${idx + 1}`,
           description: q.description || '',
           expected_output: q.expectedOutput || q.expected_output || '',
-          points: parseInt(q.points) || 100,
+          points: parseInt(q.points) || 10,
           phase: phase,
           category: (q.category && ['Easy', 'Medium', 'Hard'].includes(q.category)) ? q.category : 'Easy',
           initial_code: cppV.initialCode || '',
@@ -622,44 +632,56 @@ const AdminDashboard = () => {
       })
       .subscribe();
 
+    // Helper formatters
+    const formatUser = (u) => ({
+      ...u,
+      rollNo: u.roll_no || u.rollNo,
+      tabSwitches: u.tab_switches ?? u.tabSwitches ?? 0,
+      copyPasteCount: u.copy_paste_count ?? u.copyPasteCount ?? 0,
+      totalSubmissionsCount: u.total_submissions_count ?? u.totalSubmissionsCount ?? 0,
+      elapsedTimeMs: u.elapsed_time_ms ?? u.elapsedTimeMs ?? 0,
+      isFinished: u.is_finished ?? u.isFinished ?? false,
+      selectedQuestionId: u.selected_question_id || u.selectedQuestionId,
+      completedQuestions: u.completed_questions || u.completedQuestions || [],
+      cumulativeClearedErrors: u.cumulative_cleared_errors ?? u.cumulativeClearedErrors ?? 0,
+      cumulativeTotalErrors: u.cumulative_total_errors ?? u.cumulativeTotalErrors ?? 0,
+      currentCode: u.current_code || u.currentCode || ''
+    });
+
+    const formatQuestion = (q) => ({
+      ...q,
+      expectedOutput: q.expected_output || q.expectedOutput,
+      initialCode: q.initial_code || q.initialCode,
+      correctCode: q.correct_code || q.correctCode,
+      errorLines: q.error_lines || q.errorLines
+    });
+
     const usersChan = supabase
       .channel('admin:users')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async () => {
-        const { data: uRows } = await supabase.from('users').select('*');
-        if (uRows) {
-          const mapped = uRows.map(u => ({
-            ...u,
-            rollNo: u.roll_no || u.rollNo,
-            tabSwitches: u.tab_switches ?? u.tabSwitches ?? 0,
-            copyPasteCount: u.copy_paste_count ?? u.copyPasteCount ?? 0,
-            totalSubmissionsCount: u.total_submissions_count ?? u.totalSubmissionsCount ?? 0,
-            elapsedTimeMs: u.elapsed_time_ms ?? u.elapsedTimeMs ?? 0,
-            isFinished: u.is_finished ?? u.isFinished ?? false,
-            selectedQuestionId: u.selected_question_id || u.selectedQuestionId,
-            completedQuestions: u.completed_questions || u.completedQuestions || [],
-            cumulativeClearedErrors: u.cumulative_cleared_errors ?? u.cumulativeClearedErrors ?? 0,
-            cumulativeTotalErrors: u.cumulative_total_errors ?? u.cumulativeTotalErrors ?? 0,
-            currentCode: u.current_code || u.currentCode || ''
-          }));
-          mapped.sort((a, b) => ((a.rollNo || '') > (b.rollNo || '') ? 1 : -1));
-          setLiveUsers(mapped);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
+        if (payload.eventType === 'UPDATE' && payload.new) {
+          const updated = formatUser(payload.new);
+          setLiveUsers(prev => prev.map(u => u.id === updated.id ? { ...u, ...updated } : u));
+        } else if (payload.eventType === 'INSERT' && payload.new) {
+          const newUser = formatUser(payload.new);
+          setLiveUsers(prev => [...prev.filter(u => u.id !== newUser.id), newUser].sort((a, b) => ((a.rollNo || '') > (b.rollNo || '') ? 1 : -1)));
+        } else if (payload.eventType === 'DELETE' && payload.old) {
+          setLiveUsers(prev => prev.filter(u => u.id !== payload.old.id));
         }
       })
       .subscribe();
 
     const questionsChan = supabase
       .channel('admin:questions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, async () => {
-        const { data: qRows } = await supabase.from('questions').select('*');
-        if (qRows) {
-          const mappedQ = qRows.map(q => ({
-            ...q,
-            expectedOutput: q.expected_output || q.expectedOutput,
-            initialCode: q.initial_code || q.initialCode,
-            correctCode: q.correct_code || q.correctCode,
-            errorLines: q.error_lines || q.errorLines
-          }));
-          setQuestionsList(mappedQ);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, (payload) => {
+        if (payload.eventType === 'UPDATE' && payload.new) {
+          const updated = formatQuestion(payload.new);
+          setQuestionsList(prev => prev.map(q => q.id === updated.id ? { ...q, ...updated } : q));
+        } else if (payload.eventType === 'INSERT' && payload.new) {
+          const newQ = formatQuestion(payload.new);
+          setQuestionsList(prev => [...prev.filter(q => q.id !== newQ.id), newQ]);
+        } else if (payload.eventType === 'DELETE' && payload.old) {
+          setQuestionsList(prev => prev.filter(q => q.id !== payload.old.id));
         }
       })
       .subscribe();
@@ -719,8 +741,8 @@ const AdminDashboard = () => {
     const uniqueKeys = [...new Set(rawKeys.map(k => (typeof k === 'string' ? k.trim() : (k?.apiKey || k?.key || '')).trim()).filter(Boolean))];
 
     try {
-      // 1. Try backend verification endpoint first
-      const res = await axios.post('/api/onlinecompiler/status', { keys: uniqueKeys }, { timeout: 12000 });
+      // Check status safely via backend endpoint without browser CORS restrictions
+      const res = await axios.post('/api/onlinecompiler/status', { keys: uniqueKeys }, { timeout: 15000 });
       if (res.data && res.data.all && res.data.all.length > 0) {
         setCompilerStatusList({
           active: res.data.active || [],
@@ -728,90 +750,17 @@ const AdminDashboard = () => {
           all: res.data.all || [],
           totalCount: res.data.totalCount || res.data.all.length
         });
-        return;
       }
     } catch (err) {
-      // Fall through to browser sequential test
-    }
-
-    // 2. Direct browser sequential test ping to OnlineCompiler.io (spaced 250ms apart to prevent concurrent rate limits)
-    try {
-      const results = [];
-      for (const key of uniqueKeys) {
-        let status = 'active';
-        let errorReason = null;
-
-        for (let attempt = 0; attempt < 2; attempt++) {
-          try {
-            const resp = await axios.post('https://api.onlinecompiler.io/api/run-code-sync/', {
-              compiler: 'g++-15',
-              code: 'int main(){return 0;}',
-              input: ''
-            }, {
-              timeout: 9000,
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': key,
-                'ApiKey': key
-              }
-            });
-
-            const errCheck = ((resp.data?.error || '') + ' ' + (resp.data?.message || '')).toLowerCase();
-            if (errCheck.includes('concurrent') || errCheck.includes('too many')) {
-              // Transient concurrency limit from pinging, retry after 300ms
-              await new Promise(r => setTimeout(r, 350));
-              continue;
-            }
-
-            if (
-              resp.status === 401 || resp.status === 403 ||
-              errCheck.includes('limit exceeded') || errCheck.includes('quota') || errCheck.includes('daily limit') ||
-              errCheck.includes('invalid api key') || errCheck.includes('unauthorized')
-            ) {
-              status = 'exhausted';
-              errorReason = resp.data?.error || resp.data?.message || 'Quota Limit Exceeded';
-            } else {
-              status = 'active';
-              errorReason = null;
-            }
-            break;
-          } catch (pingErr) {
-            const errMsg = pingErr?.response?.data?.error || pingErr?.response?.data?.message || pingErr?.message || '';
-            const errStatus = pingErr?.response?.status;
-            const errCheck = errMsg.toLowerCase();
-
-            if (errCheck.includes('concurrent') || errCheck.includes('too many')) {
-              await new Promise(r => setTimeout(r, 350));
-              continue;
-            }
-
-            if (errStatus === 401 || errStatus === 403 || errCheck.includes('limit exceeded') || errCheck.includes('quota') || errCheck.includes('daily limit')) {
-              status = 'exhausted';
-              errorReason = errMsg || `HTTP ${errStatus} Quota Limit`;
-            } else {
-              // Temporary network hiccup, keep active
-              status = 'active';
-              errorReason = null;
-            }
-            break;
-          }
-        }
-
-        results.push({ apiKey: key, status, used: 0, errorReason });
-        await new Promise(r => setTimeout(r, 250)); // Spacing between key checks
-      }
-
-      const active = results.filter(r => r.status === 'active');
-      const exhausted = results.filter(r => r.status === 'exhausted');
-
+      console.warn('Backend compiler status endpoint notice:', err?.message);
+      // Fallback: Default all keys to active in local UI state without making blocked direct browser requests
+      const fallbackList = uniqueKeys.map(k => ({ apiKey: k, status: 'active', used: 0, errorReason: null }));
       setCompilerStatusList({
-        totalCount: results.length,
-        all: results,
-        active,
-        exhausted
+        totalCount: fallbackList.length,
+        all: fallbackList,
+        active: fallbackList,
+        exhausted: []
       });
-    } catch (finalErr) {
-      console.error('Failed test of compiler keys:', finalErr);
     } finally {
       setIsCheckingCompiler(false);
     }
@@ -909,7 +858,7 @@ const AdminDashboard = () => {
         title: formData.title,
         description: formData.description,
         expected_output: formData.expectedOutput,
-        points: parseInt(formData.points) || 100,
+        points: parseInt(formData.points) || 10,
         phase: formData.phase,
         category: formData.category || 'Easy',
         initial_code: cppV.initialCode || '',
@@ -932,7 +881,7 @@ const AdminDashboard = () => {
       }
 
       setFormData({
-        title: '', description: '', expectedOutput: '', points: 100, phase: 'cpp', category: 'Easy',
+        title: '', description: '', expectedOutput: '', points: 10, phase: 'cpp', category: 'Easy',
         variants: { c: { initialCode: '', correctCode: '', errorLines: '' }, cpp: { initialCode: '', correctCode: '', errorLines: '' } }
       });
     } catch (error) {
@@ -951,7 +900,7 @@ const AdminDashboard = () => {
       title: q.title || '',
       description: q.description || '',
       expectedOutput: q.expectedOutput || q.expected_output || '',
-      points: q.points || 100,
+      points: q.points || 10,
       phase: p,
       category: q.category || 'Easy',
       variants: {
@@ -1637,7 +1586,7 @@ const AdminDashboard = () => {
                 {editingQuestionId && (
                   <button type="button" className="btn-secondary" onClick={() => {
                     setEditingQuestionId(null);
-                    setFormData({ title: '', description: '', expectedOutput: '', points: 100, phase: 'cpp', category: 'Easy', variants: { c: { initialCode: '', correctCode: '', errorLines: '' }, cpp: { initialCode: '', correctCode: '', errorLines: '' } } });
+                    setFormData({ title: '', description: '', expectedOutput: '', points: 10, phase: 'cpp', category: 'Easy', variants: { c: { initialCode: '', correctCode: '', errorLines: '' }, cpp: { initialCode: '', correctCode: '', errorLines: '' } } });
                   }}>CANCEL</button>
                 )}
               </div>
@@ -2712,7 +2661,7 @@ const AdminDashboard = () => {
                               </div>
                               {u.tabSwitches > 0 && (
                                 <div style={{ fontSize: '0.7rem', color: '#ff4d6d', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-                                  ⚠️ -{u.tabSwitches * 2} pts ({u.tabSwitches} tab {u.tabSwitches === 1 ? 'switch' : 'switches'})
+                                  ⚠️ {u.tabSwitches} tab {u.tabSwitches === 1 ? 'switch' : 'switches'}
                                 </div>
                               )}
                             </td>
@@ -3060,7 +3009,7 @@ const AdminDashboard = () => {
                           {selectedUser.name} <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>(Roll: {selectedUser.rollNo})</span>
                         </h3>
                         <div style={{ marginTop: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                          Total Score: <strong style={{ color: '#007fd7' }}>{selectedUser.score} pts</strong> | Total Active Time: <strong>{selectedUser.elapsedTimeMs ? `${Math.floor(selectedUser.elapsedTimeMs / 60000)}m ${Math.floor((selectedUser.elapsedTimeMs % 60000) / 1000)}s` : 'N/A'}</strong> | Tab Switches: <strong style={{ color: selectedUser.tabSwitches > 0 ? 'var(--accent-pink)' : 'inherit' }}>{selectedUser.tabSwitches || 0} (-{(selectedUser.tabSwitches || 0) * 2} pts)</strong>
+                          Total Score: <strong style={{ color: '#007fd7' }}>{Math.max(0, selectedUser.score || 0)} pts</strong> | Total Active Time: <strong>{selectedUser.elapsedTimeMs ? `${Math.floor(selectedUser.elapsedTimeMs / 60000)}m ${Math.floor((selectedUser.elapsedTimeMs % 60000) / 1000)}s` : 'N/A'}</strong> | Tab Switches: <strong style={{ color: selectedUser.tabSwitches > 0 ? 'var(--accent-pink)' : 'inherit' }}>{selectedUser.tabSwitches || 0}</strong>
                         </div>
                       </div>
                     </div>
@@ -3223,7 +3172,7 @@ const AdminDashboard = () => {
                 <th style={{ width: '21%', padding: '8px 5px', color: 'black', border: '1.5px solid black', textAlign: 'center', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle' }}>Roll No</th>
                 <th style={{ width: '13%', padding: '8px 5px', color: 'black', border: '1.5px solid black', textAlign: 'center', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle' }}>Errors Fixed</th>
                 <th style={{ width: '12%', padding: '8px 5px', color: 'black', border: '1.5px solid black', textAlign: 'center', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle' }}>Time Taken</th>
-                <th style={{ width: '12%', padding: '8px 5px', color: 'black', border: '1.5px solid black', textAlign: 'center', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle' }}>Total Score</th>
+                <th style={{ width: '12%', padding: '8px 5px', color: 'black', border: '1.5px solid black', textAlign: 'center', fontWeight: 'bold', fontSize: '10pt', verticalAlign: 'middle' }}>Mark (Out of 10)</th>
               </tr>
             </thead>
           );
@@ -3292,6 +3241,8 @@ const AdminDashboard = () => {
                       ) : (
                         chunk.rows.map((user, rIdx) => {
                           const globalIndex = chunk.startIndex + rIdx;
+                          const qPerStudent = parseInt(questionsPerStudent) || 2;
+                          const finalMarkScaled = user.score !== undefined ? Math.max(0, +((user.score || 0) / qPerStudent).toFixed(1)) : 0;
                           return (
                             <tr key={user.id} className="avoid-break" style={{ borderBottom: '1px solid black', color: 'black', pageBreakInside: 'avoid', breakInside: 'avoid', pageBreakAfter: 'auto' }}>
                               <td style={{ width: '10%', padding: '6px 5px', fontWeight: 'bold', color: 'black', border: '1px solid black', textAlign: 'center', verticalAlign: 'middle', fontSize: '10pt' }}>
@@ -3310,7 +3261,8 @@ const AdminDashboard = () => {
                                 {user.elapsedTimeMs ? `${Math.floor(user.elapsedTimeMs / 60000)}m ${Math.floor((user.elapsedTimeMs % 60000) / 1000)}s` : 'N/A'}
                               </td>
                               <td style={{ width: '12%', padding: '6px 5px', fontWeight: 'bold', color: 'black', border: '1px solid black', textAlign: 'center', verticalAlign: 'middle', fontSize: '10.5pt' }}>
-                                {user.score !== undefined ? user.score : 0}
+                                <span>{finalMarkScaled} / 10</span>
+                                <span style={{ fontSize: '7.5pt', color: '#555', display: 'block', fontWeight: 'normal' }}>({user.score || 0} pts)</span>
                               </td>
                             </tr>
                           );

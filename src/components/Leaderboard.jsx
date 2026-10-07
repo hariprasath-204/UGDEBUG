@@ -9,6 +9,7 @@ const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'];
 
 const Leaderboard = () => {
   const [allUsers, setAllUsers] = useState([]);
+  const [questionsCount, setQuestionsCount] = useState(2);
   const [loading, setLoading] = useState(true);
   const [revealed, setRevealed] = useState(false);
 
@@ -16,7 +17,7 @@ const Leaderboard = () => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('*');
+        .select('id, roll_no, name, category, score, is_finished, total_submissions_count, elapsed_time_ms, completed_questions, cumulative_cleared_errors, cumulative_total_errors, penalty_points, tab_switches, copy_paste_count');
 
       if (error) {
         console.error('Error fetching leaderboard:', error);
@@ -24,6 +25,15 @@ const Leaderboard = () => {
       }
 
       setAllUsers(data || []);
+
+      const { data: eventRow } = await supabase
+        .from('settings')
+        .select('data')
+        .eq('id', 'event')
+        .single();
+      if (eventRow?.data?.questionsPerStudent) {
+        setQuestionsCount(parseInt(eventRow.data.questionsPerStudent) || 2);
+      }
     } catch (error) {
       console.error('Error fetching leaderboard: ', error);
     } finally {
@@ -33,26 +43,6 @@ const Leaderboard = () => {
 
   useEffect(() => {
     fetchLeaderboard();
-
-    // 1. Periodic poll backup
-    const intervalId = setInterval(fetchLeaderboard, 8000);
-
-    // 2. Realtime subscription for live user score/submission updates
-    const channel = supabase
-      .channel('leaderboard:users')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'users' },
-        (payload) => {
-          fetchLeaderboard();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      clearInterval(intervalId);
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   // Trigger reveal animation after data loads
@@ -131,7 +121,7 @@ const Leaderboard = () => {
                 <th style={{ padding: '1rem' }}>RANK</th>
                 <th style={{ padding: '1rem' }}>NAME</th>
                 <th style={{ padding: '1rem' }}>ROLL NUMBER</th>
-                <th style={{ padding: '1rem' }}>SCORE</th>
+                <th style={{ padding: '1rem' }}>FINAL MARK (OUT OF 10)</th>
                 <th style={{ padding: '1rem' }}>EXECS</th>
                 <th style={{ padding: '1rem' }}>TIME TAKEN</th>
                 <th style={{ padding: '1rem' }}>WARNINGS</th>
@@ -154,6 +144,8 @@ const Leaderboard = () => {
                   const userExecs = user.total_submissions_count ?? user.totalSubmissionsCount ?? 0;
                   const userElapsed = user.elapsed_time_ms ?? user.elapsedTimeMs ?? 0;
                   const userFinished = user.is_finished ?? user.isFinished ?? false;
+                  const qCount = questionsCount || 2;
+                  const scaledMark = Math.max(0, +((user.score || 0) / qCount).toFixed(1));
 
                   const delay = Math.min(index * 50, 1000);
 
@@ -202,8 +194,9 @@ const Leaderboard = () => {
                       </td>
 
                       {/* SCORE */}
-                      <td style={{ padding: '1rem', fontWeight: 'bold', color: (user.score || 0) < 0 ? '#de0606' : '#ffffff' }}>
-                        {user.score !== undefined ? user.score : 0}
+                      <td style={{ padding: '1rem', fontWeight: 'bold' }}>
+                        <span style={{ color: '#007fd7', fontSize: '1.1rem' }}>{scaledMark} / 10</span>
+                        <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 'normal' }}>({Math.max(0, user.score || 0)} pts)</span>
                       </td>
 
                       {/* EXECS */}
@@ -224,7 +217,7 @@ const Leaderboard = () => {
 
                       {/* WARNINGS */}
                       <td style={{ padding: '1rem', fontSize: '0.85rem', color: hasWarnings ? '#ff4d6d' : 'var(--text-secondary)' }}>
-                        Tabs: {tabSwitches} (-{tabSwitches * 2} pts) / Copy: {copyPasteCount}
+                        Tabs: {tabSwitches} / Copy: {copyPasteCount}
                       </td>
 
                       {/* STATUS */}

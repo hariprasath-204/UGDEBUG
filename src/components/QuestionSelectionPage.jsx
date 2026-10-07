@@ -76,7 +76,8 @@ const QuestionSelectionPage = () => {
                       .filter(g => g.length > 0);
                     
                     const total = Math.max(1, groups.length || (v.errorLinesArray?.length || 1));
-                    const ptsPerErr = +(100 / total).toFixed(2);
+                    const maxQPts = parseInt(targetQ.points) || 10;
+                    const ptsPerErr = +(maxQPts / total).toFixed(2);
                     const initialLines = initialCode.split('\n');
                     const userLines = draftCode.split('\n');
 
@@ -93,7 +94,7 @@ const QuestionSelectionPage = () => {
                     });
 
                     if (cleared === 0) cleared = 1;
-                    const qScore = Math.min(100, Math.round(cleared * ptsPerErr));
+                    const qScore = Math.min(maxQPts, Math.round(cleared * ptsPerErr));
 
                     additionalScore += qScore;
                     newCompleted.push(qId);
@@ -277,7 +278,7 @@ const QuestionSelectionPage = () => {
         description: q.description,
         category: q.category,
         phase: q.phase || 'cpp',
-        points: q.points || 100,
+        points: q.points || 10,
         expectedOutput: q.expected_output || q.expectedOutput,
         initialCode: q.initial_code || q.initialCode,
         correctCode: q.correct_code || q.correctCode,
@@ -488,7 +489,7 @@ const QuestionSelectionPage = () => {
                       </p>
                       <div style={{ marginTop: '0.6rem' }}>
                         <span style={{ display: 'inline-block', fontSize: '0.8rem', color: q.isCompleted ? 'var(--text-secondary)' : 'var(--accent-magenta)', border: `1px solid ${q.isCompleted ? 'var(--text-secondary)' : 'var(--accent-magenta)'}`, padding: '2px 10px', borderRadius: '12px', fontWeight: 'bold' }}>
-                          {q.points || 100} POINTS
+                          {q.points || 10} MARKS
                         </span>
                       </div>
                     </div>

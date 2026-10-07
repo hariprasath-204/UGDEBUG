@@ -4,7 +4,7 @@
     "category": "Easy",
     "phase": "cpp",
     "description": "Debug the factorial program. (logic and syntax).",
-    "points": 100,
+    "points": 10,
     "expectedOutput": "Factorial = 120",
     "variants": {
       "cpp": {
@@ -19,7 +19,7 @@
     "category": "Easy",
     "phase": "cpp",
     "description": "Debug the sum of natural numbers program. (logic and syntax).",
-    "points": 100,
+    "points": 10,
     "expectedOutput": "Sum = 55",
     "variants": {
       "cpp": {
@@ -34,7 +34,7 @@
     "category": "Easy",
     "phase": "cpp",
     "description": "Debug the sum and average program. (logic and syntax).",
-    "points": 100,
+    "points": 10,
     "expectedOutput": "Sum = 55\nAverage = 18.3333",
     "variants": {
       "cpp": {
@@ -49,7 +49,7 @@
     "category": "Easy",
     "phase": "cpp",
     "description": "Debug the odd or even checking program. (logic and syntax).",
-    "points": 100,
+    "points": 10,
     "expectedOutput": "Odd Number",
     "variants": {
       "cpp": {
@@ -64,7 +64,7 @@
     "category": "Easy",
     "phase": "cpp",
     "description": "Debug the student mark class program. (logic and syntax).",
-    "points": 100,
+    "points": 10,
     "expectedOutput": "Mark = 85\nResult = Pass",
     "variants": {
       "cpp": {
@@ -79,7 +79,7 @@
     "category": "Easy",
     "phase": "cpp",
     "description": "Debug the rectangle area class program. (logic and syntax).",
-    "points": 100,
+    "points": 10,
     "expectedOutput": "Area = 50",
     "variants": {
       "cpp": {
@@ -94,7 +94,7 @@
     "category": "Easy",
     "phase": "cpp",
     "description": "Debug the cube of a number program. (logic and syntax).",
-    "points": 100,
+    "points": 10,
     "expectedOutput": "Cube = 27",
     "variants": {
       "cpp": {
@@ -109,7 +109,7 @@
     "category": "Easy",
     "phase": "cpp",
     "description": "Debug the number checking program. (logic and syntax).",
-    "points": 100,
+    "points": 10,
     "expectedOutput": "Negative",
     "variants": {
       "cpp": {
@@ -124,7 +124,7 @@
     "category": "Easy",
     "phase": "cpp",
     "description": "Debug the employee salary class program. (logic and syntax).",
-    "points": 100,
+    "points": 10,
     "expectedOutput": "Salary = 22000",
     "variants": {
       "cpp": {
@@ -139,7 +139,7 @@
     "category": "Easy",
     "phase": "cpp",
     "description": "Debug the multiplication table program. (logic and syntax).",
-    "points": 100,
+    "points": 10,
     "expectedOutput": "5 x 1 = 5\n5 x 2 = 10\n5 x 3 = 15\n5 x 4 = 20\n5 x 5 = 25\n5 x 6 = 30\n5 x 7 = 35\n5 x 8 = 40\n5 x 9 = 45\n5 x 10 = 50",
     "variants": {
       "cpp": {
@@ -154,7 +154,7 @@
     "category": "Medium",
     "phase": "cpp",
     "description": "Debug the factorial function program. (logic and syntax).",
-    "points": 200,
+    "points": 10,
     "expectedOutput": "Factorial of 5 = 120\nIs even: Yes",
     "variants": {
       "cpp": {
@@ -169,7 +169,7 @@
     "category": "Medium",
     "phase": "cpp",
     "description": "Debug the prime number checking program. (logic and syntax).",
-    "points": 200,
+    "points": 10,
     "expectedOutput": "29 is a Prime Number\n15 is Not a Prime Number",
     "variants": {
       "cpp": {
@@ -184,7 +184,7 @@
     "category": "Medium",
     "phase": "cpp",
     "description": "Debug the even and odd counting program. (logic and syntax).",
-    "points": 200,
+    "points": 10,
     "expectedOutput": "Even numbers = 3\nOdd numbers = 2\nSum of evens = 40",
     "variants": {
       "cpp": {
@@ -199,7 +199,7 @@
     "category": "Medium",
     "phase": "cpp",
     "description": "Debug the student grade program. (logic and syntax).",
-    "points": 200,
+    "points": 10,
     "expectedOutput": "Mark 92 -> Grade A : Excellent\nMark 75 -> Grade B : Good\nMark 40 -> Grade F : Needs Improvement",
     "variants": {
       "cpp": {
@@ -214,7 +214,7 @@
     "category": "Medium",
     "phase": "cpp",
     "description": "Debug the simple interest class program. (logic and syntax).",
-    "points": 200,
+    "points": 10,
     "expectedOutput": "Simple Interest = 100\nTotal Amount = 1100",
     "variants": {
       "cpp": {
@@ -229,7 +229,7 @@
     "category": "Medium",
     "phase": "cpp",
     "description": "Debug the single inheritance program. (logic and syntax).",
-    "points": 200,
+    "points": 10,
     "expectedOutput": "Name = Arun\nAge = 18\nCategory = Adult",
     "variants": {
       "cpp": {
@@ -244,7 +244,7 @@
     "category": "Medium",
     "phase": "cpp",
     "description": "Debug the even number printing program. (logic and syntax).",
-    "points": 200,
+    "points": 10,
     "expectedOutput": "Even: 2\nEven: 4\nEven: 6\nEven: 8\nEven: 10\nCount = 5\nSum = 30",
     "variants": {
       "cpp": {
@@ -259,7 +259,7 @@
     "category": "Medium",
     "phase": "cpp",
     "description": "Debug the multiple inheritance payroll program. (logic and syntax).",
-    "points": 200,
+    "points": 10,
     "expectedOutput": "Salary = 30000\nFinal Salary = 36000",
     "variants": {
       "cpp": {
@@ -274,7 +274,7 @@
     "category": "Hard",
     "phase": "cpp",
     "description": "Debug the mark validation and grading program. (logic and syntax).",
-    "points": 300,
+    "points": 10,
     "expectedOutput": "105 : Invalid Mark\n92 : Grade A\n75 : Grade B\n50 : Grade D\n30 : Fail\nPassed = 3",
     "variants": {
       "cpp": {
@@ -289,7 +289,7 @@
     "category": "Hard",
     "phase": "cpp",
     "description": "Debug the total, average and grade program. (logic and syntax).",
-    "points": 300,
+    "points": 10,
     "expectedOutput": "Total = 401\nAverage = 80.2\nHighest = 90\nGrade B",
     "variants": {
       "cpp": {
@@ -304,7 +304,7 @@
     "category": "Hard",
     "phase": "cpp",
     "description": "Debug the array sum program that uses a function. (logic and syntax).",
-    "points": 300,
+    "points": 10,
     "expectedOutput": "Sum = 27\nEven Sum = 6\nOdd Sum = 21",
     "variants": {
       "cpp": {
@@ -319,7 +319,7 @@
     "category": "Hard",
     "phase": "cpp",
     "description": "Debug the employee bonus, tax and net salary program. (logic and syntax).",
-    "points": 300,
+    "points": 10,
     "expectedOutput": "Bonus = 5000\nTax = 2500\nNet Salary = 52500",
     "variants": {
       "cpp": {
@@ -334,7 +334,7 @@
     "category": "Hard",
     "phase": "cpp",
     "description": "Debug the shopping bill class program. (logic and syntax).",
-    "points": 300,
+    "points": 10,
     "expectedOutput": "Total Bill = 1100\nGST = 55\nFinal Amount = 1155",
     "variants": {
       "cpp": {
@@ -349,7 +349,7 @@
     "category": "Hard",
     "phase": "cpp",
     "description": "Debug the string reverse and palindrome program. (logic and syntax).",
-    "points": 300,
+    "points": 10,
     "expectedOutput": "Reverse = olleh\nLength = 5\nNot a Palindrome",
     "variants": {
       "cpp": {
@@ -364,7 +364,7 @@
     "category": "Hard",
     "phase": "cpp",
     "description": "Debug the switch-case calculator program. (logic and syntax).",
-    "points": 300,
+    "points": 10,
     "expectedOutput": "Choice 1 : 16\nChoice 2 : 8\nChoice 3 : 48\nChoice 4 : 3",
     "variants": {
       "cpp": {
@@ -379,7 +379,7 @@
     "category": "Hard",
     "phase": "cpp",
     "description": "Debug the rectangle constructor program. (logic and syntax).",
-    "points": 300,
+    "points": 10,
     "expectedOutput": "Area = 50\nPerimeter = 30\nRectangle",
     "variants": {
       "cpp": {
